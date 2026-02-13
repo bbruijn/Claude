@@ -11,3 +11,8 @@ rules:
   steps:
   - intent: bot_challenge
   - action: utter_iamabot
+
+- rule: Generate image when user requests one
+  steps:
+  - intent: generate_image
+  - action: action_generate_image

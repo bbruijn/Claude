@@ -83,6 +83,28 @@ nlu:
     - so saad
     - so sad
 
+- intent: generate_image
+  examples: |
+    - generate an image of a cat
+    - generate an image of a sunset over the ocean
+    - create an image of a mountain landscape
+    - make an image of a robot
+    - draw a beautiful forest
+    - paint a starry night sky
+    - create a picture of a dog playing in the park
+    - generate a picture of a futuristic city
+    - make a picture of a dragon
+    - I want an image of a flower garden
+    - can you create an image of a spaceship
+    - please generate an image of a cute puppy
+    - generate image of a tropical beach
+    - create image of a cozy cabin in the woods
+    - make me an image of an astronaut on the moon
+    - draw me a superhero
+    - paint a waterfall in the jungle
+    - image of a snowy mountain
+    - picture of a colorful parrot
+
 - intent: bot_challenge
   examples: |
     - are you a bot?
