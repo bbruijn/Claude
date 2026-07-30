@@ -126,8 +126,11 @@ let depth = 0;
 const log = (s) => tree.push("  ".repeat(depth) + s);
 
 class WidgetText {
-  constructor(t) { this.text = t; log(`text "${t}"`); }
-  set font(v) { if (!v || !isFinite(v.size)) throw new Error(`bad font on "${this.text}"`); }
+  constructor(t) { this.text = t; log(`text "${t}"`); this.idx = tree.length - 1; }
+  set font(v) {
+    if (!v || !isFinite(v.size)) throw new Error(`bad font on "${this.text}"`);
+    tree[this.idx] += `  [${v.size}pt]`;
+  }
   set textColor(v) { if (!(v instanceof Color)) throw new Error(`bad textColor on "${this.text}"`); }
   set lineLimit(v) {} set minimumScaleFactor(v) {}
   centerAlignText() {} rightAlignText() {} leftAlignText() {}

@@ -36,6 +36,10 @@ const CFG = {
   // Rewards + Available light up once their combined TICS hits this — the
   // cue to compound. Set to 0 to always show it, Infinity to disable.
   compoundThreshold: 1000,
+  // Global multiplier for the big numbers only (labels stay put). Nudge to
+  // 1.1 / 1.2 if they still read small on your phone, 0.9 to pull them back.
+  fontScale:     1.0,
+  showValueUsd:  true,    // the small USD line under each card value
   tapUrl:        null,    // e.g. "https://ticsscan.com" — null keeps it private
 };
 // ───────────────────────────────────────────────────────────────────
@@ -200,10 +204,12 @@ function fmtPct(n) {
   return (n >= 0 ? "+" : "") + n.toFixed(2) + "%";
 }
 
-// Shrink the font as the string grows so long balances never truncate.
+// Shrink the font as the string grows so long balances never truncate. Kept
+// gentle — iOS also auto-scales to fit, so being aggressive here just makes
+// every number small for no reason.
 function valueFont(str, base) {
   const L = String(str || "").length;
-  const f = L <= 6 ? 1 : L <= 9 ? 0.88 : L <= 12 ? 0.78 : 0.66;
+  const f = L <= 6 ? 1 : L <= 9 ? 0.94 : L <= 12 ? 0.86 : 0.72;
   return Math.round(base * f);
 }
 
@@ -329,6 +335,11 @@ const rewardsUsd = (state.rewards != null && state.price != null) ? state.reward
 const compoundable = (state.rewards || 0) + (state.liquid || 0);
 const readyToCompound = compoundable >= CFG.compoundThreshold;
 
+// The small USD line under a card value, or null when it can't be computed
+// or the user turned it off to give the numbers more room.
+const usdSub = (tics) =>
+  (CFG.showValueUsd && tics != null && state.price != null) ? fmtUsd(tics * state.price) : null;
+
 // ══ THEME ══════════════════════════════════════════════════════════
 const UP   = "#22c55e";
 const DOWN = "#ff5f87";
@@ -357,9 +368,11 @@ const trend = state.change24h == null ? FLAT
 
 // ══ LAYOUT CONSTANTS ═══════════════════════════════════════════════
 const SCALE  = LARGE ? 1.35 : 1;
-const GAP    = SMALL ? 5 : Math.round(7 * SCALE);
-const PAD_V  = SMALL ? 6 : Math.round(8 * SCALE);
-const PAD_H  = SMALL ? 8 : Math.round(10 * SCALE);
+// Large packs the most in, so it gets tighter padding than SCALE would give —
+// the reclaimed height is what stops iOS auto-shrinking the numbers to fit.
+const GAP    = SMALL ? 5 : LARGE ? 8  : 7;
+const PAD_V  = SMALL ? 6 : LARGE ? 9  : 8;
+const PAD_H  = SMALL ? 8 : LARGE ? 12 : 10;
 const WIDTH  = SMALL ? 155 : 338;
 const CARD_W = Math.floor((WIDTH - GAP - (SMALL ? 22 : 28)) / 2);
 
@@ -445,14 +458,15 @@ function addCard(parent, colorHex, icon, label, value, sub, glow) {
   addPill(card, colorHex, icon, label, SMALL ? 9 : 10);
 
   const val = card.addText(String(value || "--"));
-  val.font = Font.boldRoundedSystemFont(valueFont(value, Math.round((SMALL ? 17 : 19) * SCALE)));
+  val.font = Font.boldRoundedSystemFont(
+    valueFont(value, Math.round((SMALL ? 18 : 22) * SCALE * CFG.fontScale)));
   val.textColor = C.text;
   val.lineLimit = 1;
-  val.minimumScaleFactor = 0.55;
+  val.minimumScaleFactor = 0.7;
 
   if (sub) {
     const s = card.addText(sub);
-    s.font = f(SMALL ? 8 : 9, "medium");
+    s.font = f(SMALL ? 8 : LARGE ? 7 : 9, "medium");
     s.textColor = C.sub;
     s.lineLimit = 1;
     s.minimumScaleFactor = 0.6;
@@ -526,7 +540,7 @@ if (!nativeAddr) {
   w.addSpacer(4);
 
   const hero = w.addText(fmtUsd(totalUsd));
-  hero.font = Font.boldRoundedSystemFont(valueFont(fmtUsd(totalUsd), 24));
+  hero.font = Font.boldRoundedSystemFont(valueFont(fmtUsd(totalUsd), Math.round(25 * CFG.fontScale)));
   hero.textColor = C.text;
   hero.lineLimit = 1;
   hero.minimumScaleFactor = 0.5;
@@ -590,7 +604,7 @@ if (!nativeAddr) {
     lbl.font = f(9, "semibold");
     lbl.textColor = C.sub;
     const hero = left.addText(fmtUsd(totalUsd));
-    hero.font = Font.boldRoundedSystemFont(34);
+    hero.font = Font.boldRoundedSystemFont(Math.round(36 * CFG.fontScale));
     hero.textColor = C.text;
     hero.lineLimit = 1;
     hero.minimumScaleFactor = 0.5;
@@ -621,12 +635,12 @@ if (!nativeAddr) {
   const c1 = row1.addStack(); c1.layoutVertically(); c1.size = new Size(CARD_W, 0);
   addCard(c1, C.staked, "lock.fill", "Staked",
     fmtNum(state.staked) + " " + CFG.ticker,
-    state.price != null && state.staked != null ? fmtUsd(state.staked * state.price) : null,
+    usdSub(state.staked),
     false);
   const c2 = row1.addStack(); c2.layoutVertically(); c2.size = new Size(CARD_W, 0);
   addCard(c2, C.rewards, "gift.fill", "Rewards",
     fmtNum(state.rewards) + " " + CFG.ticker,
-    rewardsUsd != null ? fmtUsd(rewardsUsd) : null,
+    CFG.showValueUsd && rewardsUsd != null ? fmtUsd(rewardsUsd) : null,
     readyToCompound);
 
   w.addSpacer(GAP);
@@ -636,13 +650,13 @@ if (!nativeAddr) {
   const c3 = row2.addStack(); c3.layoutVertically(); c3.size = new Size(CARD_W, 0);
   addCard(c3, C.liquid, "wallet.pass.fill", "Available",
     fmtNum(state.liquid) + " " + CFG.ticker,
-    state.price != null && state.liquid != null ? fmtUsd(state.liquid * state.price) : null,
+    usdSub(state.liquid),
     readyToCompound);
   const c4 = row2.addStack(); c4.layoutVertically(); c4.size = new Size(CARD_W, 0);
   if (LARGE) {
     addCard(c4, C.unbond, "clock.arrow.circlepath", "Unbonding",
       fmtNum(state.unbonding) + " " + CFG.ticker,
-      state.price != null && state.unbonding != null ? fmtUsd(state.unbonding * state.price) : null,
+      usdSub(state.unbonding),
       false);
   } else {
     addCard(c4, C.usd, "banknote.fill", "Total Value",
@@ -677,7 +691,7 @@ if (!nativeAddr) {
       a.font = f(10, "semibold");
       a.textColor = C.text;
       a.lineLimit = 1;
-      w.addSpacer(4);
+      w.addSpacer(3);
     }
   }
 
