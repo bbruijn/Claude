@@ -31,8 +31,18 @@ the parameter; the rest keep using `MY_ADDRESS`. No need to duplicate the script
 | **Medium** | Price pill + 2×2 cards: Staked, Rewards, Available, Total Value |
 | **Large** | Hero total + 7-day sparkline, 4 cards (adds Unbonding), and a per-validator delegation list with monikers |
 
-Every TICS figure carries its USD equivalent underneath. The Rewards card gets a
-coloured glow when there's something worth claiming.
+Every TICS figure carries its USD equivalent underneath.
+
+## Compound marker
+
+The **Rewards** and **Available** cards light up with a coloured halo once their
+combined balance reaches `CFG.compoundThreshold` (default **1000 TICS**) — the
+cue that there's enough to claim and re-stake. Below that they stay plain, so
+the marker actually means something.
+
+A failed API call contributes 0 rather than an unknown, so the marker can only
+ever under-trigger — it will never tell you to compound based on missing data.
+Set the threshold to `0` to always show it, or `Infinity` to turn it off.
 
 ## Config
 
@@ -70,7 +80,7 @@ Node against fixture data:
 
 ```bash
 node widgets/test-harness.mjs <small|medium|large|app> <mode>
-# modes: ok offline cached nochart partial badaddr empty apierror
+# modes: ok offline cached nochart partial badaddr unset empty apierror below atthreshold
 TREE=1 node widgets/test-harness.mjs large ok   # dump the rendered text nodes
 ```
 

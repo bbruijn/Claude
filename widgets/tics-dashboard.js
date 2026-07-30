@@ -33,6 +33,9 @@ const CFG = {
   sparklineDays: 7,
   showSparkline: true,
   maxValidators: 3,       // rows in the large-widget validator list
+  // Rewards + Available light up once their combined TICS hits this — the
+  // cue to compound. Set to 0 to always show it, Infinity to disable.
+  compoundThreshold: 1000,
   tapUrl:        null,    // e.g. "https://ticsscan.com" — null keeps it private
 };
 // ───────────────────────────────────────────────────────────────────
@@ -319,6 +322,12 @@ const totalTics = parts.some(v => v != null)
   : null;
 const totalUsd  = (totalTics != null && state.price != null) ? totalTics * state.price : null;
 const rewardsUsd = (state.rewards != null && state.price != null) ? state.rewards * state.price : null;
+
+// What could be claimed and re-staked right now. A failed call leaves its part
+// at 0, which can only understate the total — so the marker never lights up on
+// incomplete data.
+const compoundable = (state.rewards || 0) + (state.liquid || 0);
+const readyToCompound = compoundable >= CFG.compoundThreshold;
 
 // ══ THEME ══════════════════════════════════════════════════════════
 const UP   = "#22c55e";
@@ -618,7 +627,7 @@ if (!nativeAddr) {
   addCard(c2, C.rewards, "gift.fill", "Rewards",
     fmtNum(state.rewards) + " " + CFG.ticker,
     rewardsUsd != null ? fmtUsd(rewardsUsd) : null,
-    rewardsUsd != null && rewardsUsd > 0);
+    readyToCompound);
 
   w.addSpacer(GAP);
 
@@ -628,7 +637,7 @@ if (!nativeAddr) {
   addCard(c3, C.liquid, "wallet.pass.fill", "Available",
     fmtNum(state.liquid) + " " + CFG.ticker,
     state.price != null && state.liquid != null ? fmtUsd(state.liquid * state.price) : null,
-    false);
+    readyToCompound);
   const c4 = row2.addStack(); c4.layoutVertically(); c4.size = new Size(CARD_W, 0);
   if (LARGE) {
     addCard(c4, C.unbond, "clock.arrow.circlepath", "Unbonding",

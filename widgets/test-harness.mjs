@@ -49,6 +49,12 @@ function route(url) {
     if (url.includes("/bank/v1beta1/balances/")) return { balances: [] };
     if (url.includes("/unbonding_delegations")) return { unbonding_responses: [] };
   }
+  // Threshold cases: rewards + available just under / exactly on 1000 TICS.
+  if (MODE === "below" || MODE === "atthreshold") {
+    const rew = MODE === "below" ? "600" : "700";
+    if (url.includes("/rewards")) return { total: [{ denom: "attics", amount: rew + E18 }] };
+    if (url.includes("/bank/v1beta1/balances/")) return { balances: [{ denom: "attics", amount: "300" + E18 }] };
+  }
   if (MODE === "apierror" && !url.includes("coingecko")) {
     return { code: 5, message: "rpc error: unknown address", details: [] };
   }
@@ -115,6 +121,7 @@ for (const k of ["system", "ultraLightSystem", "thinSystem", "lightSystem", "reg
 
 // ── widget tree ─────────────────────────────────────────────────────
 const tree = [];
+let glowCount = 0;
 let depth = 0;
 const log = (s) => tree.push("  ".repeat(depth) + s);
 
@@ -141,7 +148,12 @@ class WidgetStack {
   setPadding() {}
   set spacing(v) {} set size(v) { if (!(v instanceof Size)) throw new Error("size must be Size"); }
   set cornerRadius(v) {} set borderWidth(v) {} set borderColor(v) {}
-  set backgroundColor(v) { if (!(v instanceof Color)) throw new Error("backgroundColor must be Color"); }
+  set backgroundColor(v) {
+    if (!(v instanceof Color)) throw new Error("backgroundColor must be Color");
+    // The compound-marker halo is the only stack filled at 0.1 alpha
+    // (card bodies use 0.95, pills 0.18), so it is identifiable.
+    if (v.alpha === 0.1) { glowCount++; tree.push("  ".repeat(depth) + "↑ GLOW HALO"); }
+  }
   set url(v) {}
 }
 class ListWidget extends WidgetStack {
@@ -203,11 +215,12 @@ try {
     await new AsyncFunction(src)();
     if (CACHE === null) throw new Error("priming run never wrote a cache file");
     tree.length = 0;
+    glowCount = 0;
     requestLog.length = 0;
     activeMode = "offline";
   }
   await new AsyncFunction(src)();
-  console.log(`✅ ${FAMILY}/${MODE} rendered — ${tree.length} nodes, ${requestLog.length} requests`);
+  console.log(`✅ ${FAMILY}/${MODE} rendered — ${tree.length} nodes, ${requestLog.length} requests, ${glowCount} glow`);
   const unknown = [...usedSymbols].filter(s => !KNOWN_SYMBOLS.has(s));
   if (unknown.length) console.log(`⚠️  unknown SF Symbols: ${unknown.join(", ")}`);
   if (process.env.TREE === "1") console.log(tree.join("\n"));
