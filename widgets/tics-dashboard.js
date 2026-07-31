@@ -6,7 +6,7 @@
 // ║  TICS DASHBOARD — Qubetics staking widget for Scriptable         ║
 // ║                                                                  ║
 // ║  Small  : total value + staked / rewards / price                 ║
-// ║  Medium : price pill + 2x2 stat cards                            ║
+// ║  Medium : hero total + Staked / Rewards / Available rows         ║
 // ║  Large  : hero total + 7d sparkline + 4 cards + validator list   ║
 // ║                                                                  ║
 // ║  Privacy: only the Qubetics REST node and CoinGecko are called.  ║
@@ -39,7 +39,7 @@ const CFG = {
   // Global multiplier for the big numbers only (labels stay put). Nudge to
   // 1.1 / 1.2 if they still read small on your phone, 0.9 to pull them back.
   fontScale:     1.0,
-  showValueUsd:  true,    // the small USD line under each card value
+  showValueUsd:  true,    // small USD line under each card value (large only)
   tapUrl:        null,    // e.g. "https://ticsscan.com" — null keeps it private
 };
 // ───────────────────────────────────────────────────────────────────

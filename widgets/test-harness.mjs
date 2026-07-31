@@ -276,6 +276,15 @@ try {
     process.exit(1);
   }
 
+  if (process.env.LEAKCHECK === "1") {
+    // Any wallet identifier: bech32 body, or the raw hex form.
+    for (const u of requestLog) {
+      const host = u.split("/")[2];
+      const carries = /qubetics1[a-z0-9]{20,}/.test(u) || /0x[0-9a-f]{40}/i.test(u);
+      console.log(`   ${carries ? "ADDRESS SENT ->" : "  no address ->"} ${host}`);
+    }
+  }
+
   const budget = BUDGET[FAMILY] || BUDGET.medium;
   const avail = budget.h - budget.pad;
   const used = rootWidget ? Math.round(nodeHeight(rootWidget.node)) : 0;
