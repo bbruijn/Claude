@@ -28,7 +28,7 @@ the parameter; the rest keep using `MY_ADDRESS`. No need to duplicate the script
 | Size | Contents |
 |---|---|
 | **Small** | Total value, 24h change, staked / rewards / price |
-| **Medium** | Price pill + 2×2 cards: Staked, Rewards, Available, Total Value |
+| **Medium** | Price pill, big total value, and Staked / Rewards / Available as compact rows |
 | **Large** | Hero total + 7-day sparkline, 4 cards (adds Unbonding), and a per-validator delegation list with monikers |
 
 Every TICS figure carries its USD equivalent underneath.
@@ -43,6 +43,17 @@ the marker actually means something.
 A failed API call contributes 0 rather than an unknown, so the marker can only
 ever under-trigger — it will never tell you to compound based on missing data.
 Set the threshold to `0` to always show it, or `Infinity` to turn it off.
+
+## Network cost per refresh
+
+| Size | Requests | Extra |
+|---|---|---|
+| Small | 5 | — |
+| Medium | 5 | — |
+| Large | 7 | 7-day chart + bonded-validator list |
+
+`refreshMin` is a hint; iOS decides the real rate and will refresh far less
+often than you ask.
 
 ## Config
 

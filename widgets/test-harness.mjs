@@ -1,7 +1,7 @@
 // Minimal Scriptable API mock so the widget can be executed under Node.
 import fs from "fs";
 
-const SRC = new URL("./tics-dashboard.js", import.meta.url).pathname;
+const SRC = process.env.WIDGET_SRC || new URL("./tics-dashboard.js", import.meta.url).pathname;
 const FAMILY = process.argv[2] || "medium";
 const MODE = process.argv[3] || "ok";
 // A throwaway address, never a real wallet — it only has to survive bech32.
@@ -125,42 +125,89 @@ let glowCount = 0;
 let depth = 0;
 const log = (s) => tree.push("  ".repeat(depth) + s);
 
+// ── vertical budget ─────────────────────────────────────────────────
+// Widgets have a fixed height; overflowing it makes iOS clip the top and
+// bottom rather than error. Rendering alone therefore proves nothing, so we
+// estimate stacked height and fail when a family blows its budget.
+// Rough by design — line height ~1.2x point size — but it catches the
+// difference between "fits with margin" and "needs 1.4x the space it has".
+const BUDGET = {            // widget height minus vertical padding
+  small:  { h: 155, pad: 20 },
+  medium: { h: 158, pad: 25 },
+  large:  { h: 354, pad: 25 },
+  app:    { h: 158, pad: 25 },
+};
+
+// Vertical stack = sum of children + spacing; horizontal = tallest child.
+function nodeHeight(n) {
+  if (n.type !== "stack") return n.h;
+  if (n.fixedH != null) return n.fixedH + n.padT + n.padB;
+  const kids = n.children.map(nodeHeight);
+  const inner = n.vertical
+    ? kids.reduce((a, b) => a + b, 0) + n.spacing * Math.max(0, kids.length - 1)
+    : (kids.length ? Math.max(...kids) : 0);
+  return inner + n.padT + n.padB;
+}
+
 class WidgetText {
-  constructor(t) { this.text = t; log(`text "${t}"`); this.idx = tree.length - 1; }
+  constructor(t, sink) {
+    this.text = t; log(`text "${t}"`); this.idx = tree.length - 1;
+    this.node = { type: "text", h: 0 };
+    sink.push(this.node);
+  }
   set font(v) {
     if (!v || !isFinite(v.size)) throw new Error(`bad font on "${this.text}"`);
     tree[this.idx] += `  [${v.size}pt]`;
+    this.node.h = Math.round(v.size * 1.2);
   }
   set textColor(v) { if (!(v instanceof Color)) throw new Error(`bad textColor on "${this.text}"`); }
   set lineLimit(v) {} set minimumScaleFactor(v) {}
   centerAlignText() {} rightAlignText() {} leftAlignText() {}
 }
 class WidgetImage {
-  constructor(i) { if (!i) throw new Error("addImage got null image"); log("image"); }
-  set imageSize(v) {} set tintColor(v) {} set cornerRadius(v) {}
+  constructor(i, sink) {
+    if (!i) throw new Error("addImage got null image");
+    log("image");
+    this.node = { type: "image", h: 0 };
+    sink.push(this.node);
+  }
+  set imageSize(v) { this.node.h = v.height; }
+  set tintColor(v) {} set cornerRadius(v) {}
   centerAlignImage() {}
 }
 class WidgetStack {
-  constructor(label = "stack") { this.label = label; log(label); }
-  addStack() { depth++; const s = new WidgetStack("stack"); depth--; return s; }
-  addText(t) { depth++; const x = new WidgetText(t); depth--; return x; }
-  addImage(i) { depth++; const x = new WidgetImage(i); depth--; return x; }
-  addSpacer(n) {}
-  layoutHorizontally() {} layoutVertically() {}
+  constructor(label = "stack", sink = null) {
+    this.label = label; log(label);
+    this.node = { type: "stack", vertical: false, children: [], padT: 0, padB: 0, spacing: 0, fixedH: null };
+    if (sink) sink.push(this.node);
+  }
+  addStack() { depth++; const s = new WidgetStack("stack", this.node.children); depth--; return s; }
+  addText(t) { depth++; const x = new WidgetText(t, this.node.children); depth--; return x; }
+  addImage(i) { depth++; const x = new WidgetImage(i, this.node.children); depth--; return x; }
+  // A spacer with no argument is flexible: contributes nothing to minimum height.
+  addSpacer(n) { this.node.children.push({ type: "spacer", h: n === undefined ? 0 : n }); }
+  layoutHorizontally() { this.node.vertical = false; }
+  layoutVertically() { this.node.vertical = true; }
   centerAlignContent() {} topAlignContent() {} bottomAlignContent() {}
-  setPadding() {}
-  set spacing(v) {} set size(v) { if (!(v instanceof Size)) throw new Error("size must be Size"); }
+  setPadding(t, l, b, r) { this.node.padT = t || 0; this.node.padB = b || 0; }
+  set spacing(v) { this.node.spacing = v || 0; }
+  set size(v) {
+    if (!(v instanceof Size)) throw new Error("size must be Size");
+    if (v.height > 0) this.node.fixedH = v.height;
+  }
   set cornerRadius(v) {} set borderWidth(v) {} set borderColor(v) {}
   set backgroundColor(v) {
     if (!(v instanceof Color)) throw new Error("backgroundColor must be Color");
-    // The compound-marker halo is the only stack filled at 0.1 alpha
-    // (card bodies use 0.95, pills 0.18), so it is identifiable.
+    // The compound marker is the only fill at 0.1 alpha (card bodies use 0.95,
+    // pills 0.18), so it is identifiable in both card and row form.
     if (v.alpha === 0.1) { glowCount++; tree.push("  ".repeat(depth) + "↑ GLOW HALO"); }
   }
   set url(v) {}
 }
+let rootWidget = null;
 class ListWidget extends WidgetStack {
-  constructor() { super("ListWidget"); this.presented = null; }
+  constructor() { super("ListWidget"); this.node.vertical = true; this.presented = null; rootWidget = this; }
+  // Root padding is excluded here; BUDGET already subtracts it.
   setPadding() {} set refreshAfterDate(v) {} set backgroundGradient(v) {} set url(v) {}
   async presentSmall() { this.presented = "small"; }
   async presentMedium() { this.presented = "medium"; }
@@ -223,7 +270,30 @@ try {
     activeMode = "offline";
   }
   await new AsyncFunction(src)();
-  console.log(`✅ ${FAMILY}/${MODE} rendered — ${tree.length} nodes, ${requestLog.length} requests, ${glowCount} glow`);
+  // Only large draws the sparkline, so only large may pay for the chart.
+  if (FAMILY !== "large" && requestLog.some(u => u.includes("market_chart"))) {
+    console.log(`❌ ${FAMILY}/${MODE} fetched market_chart but never renders it`);
+    process.exit(1);
+  }
+
+  const budget = BUDGET[FAMILY] || BUDGET.medium;
+  const avail = budget.h - budget.pad;
+  const used = rootWidget ? Math.round(nodeHeight(rootWidget.node)) : 0;
+  const ratio = used / avail;
+  // <=1.0 fits outright. Up to 1.25 still renders because iOS shrinks text via
+  // minimumScaleFactor, but it is living on borrowed space. Beyond that the
+  // shrink runs out and the widget clips top and bottom.
+  const status = ratio <= 1.0 ? "OK" : ratio <= 1.25 ? "TIGHT" : "OVERFLOW";
+  const mark = status === "OK" ? "✅" : status === "TIGHT" ? "⚠️ " : "❌";
+  console.log(`${mark} ${FAMILY}/${MODE} rendered — ${tree.length} nodes, ` +
+    `${requestLog.length} requests, ${glowCount} glow, height ${used}/${avail}pt ${status}`);
+  if (status === "TIGHT") {
+    console.log(`   ${Math.round((ratio - 1) * 100)}% over budget — renders, but only because iOS shrinks text.`);
+  }
+  if (status === "OVERFLOW") {
+    console.log(`   ${used - avail}pt over — iOS will clip the top and bottom.`);
+    process.exit(1);
+  }
   const unknown = [...usedSymbols].filter(s => !KNOWN_SYMBOLS.has(s));
   if (unknown.length) console.log(`⚠️  unknown SF Symbols: ${unknown.join(", ")}`);
   if (process.env.TREE === "1") console.log(tree.join("\n"));

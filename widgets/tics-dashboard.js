@@ -229,7 +229,8 @@ const state = {
 
 if (nativeAddr) {
   const base = CFG.restEndpoint.replace(/\/+$/, "");
-  const wantSpark = CFG.showSparkline && !SMALL;
+  // Only large renders the sparkline, so only large should pay for the chart.
+  const wantSpark = CFG.showSparkline && LARGE;
 
   const jobs = [
     fetchJSON(`${base}/cosmos/staking/v1beta1/delegations/${nativeAddr}?pagination.limit=200`),
@@ -627,72 +628,129 @@ if (!nativeAddr) {
     }
 
     w.addSpacer(GAP);
-  }
 
-  // 2x2 cards
-  const row1 = w.addStack();
-  row1.spacing = GAP;
-  const c1 = row1.addStack(); c1.layoutVertically(); c1.size = new Size(CARD_W, 0);
-  addCard(c1, C.staked, "lock.fill", "Staked",
-    fmtNum(state.staked) + " " + CFG.ticker,
-    usdSub(state.staked),
-    false);
-  const c2 = row1.addStack(); c2.layoutVertically(); c2.size = new Size(CARD_W, 0);
-  addCard(c2, C.rewards, "gift.fill", "Rewards",
-    fmtNum(state.rewards) + " " + CFG.ticker,
-    CFG.showValueUsd && rewardsUsd != null ? fmtUsd(rewardsUsd) : null,
-    readyToCompound);
+    // 2x2 cards
+    const row1 = w.addStack();
+    row1.spacing = GAP;
+    const c1 = row1.addStack(); c1.layoutVertically(); c1.size = new Size(CARD_W, 0);
+    addCard(c1, C.staked, "lock.fill", "Staked",
+      fmtNum(state.staked) + " " + CFG.ticker,
+      usdSub(state.staked),
+      false);
+    const c2 = row1.addStack(); c2.layoutVertically(); c2.size = new Size(CARD_W, 0);
+    addCard(c2, C.rewards, "gift.fill", "Rewards",
+      fmtNum(state.rewards) + " " + CFG.ticker,
+      CFG.showValueUsd && rewardsUsd != null ? fmtUsd(rewardsUsd) : null,
+      readyToCompound);
 
-  w.addSpacer(GAP);
+    w.addSpacer(GAP);
 
-  const row2 = w.addStack();
-  row2.spacing = GAP;
-  const c3 = row2.addStack(); c3.layoutVertically(); c3.size = new Size(CARD_W, 0);
-  addCard(c3, C.liquid, "wallet.pass.fill", "Available",
-    fmtNum(state.liquid) + " " + CFG.ticker,
-    usdSub(state.liquid),
-    readyToCompound);
-  const c4 = row2.addStack(); c4.layoutVertically(); c4.size = new Size(CARD_W, 0);
-  if (LARGE) {
+    const row2 = w.addStack();
+    row2.spacing = GAP;
+    const c3 = row2.addStack(); c3.layoutVertically(); c3.size = new Size(CARD_W, 0);
+    addCard(c3, C.liquid, "wallet.pass.fill", "Available",
+      fmtNum(state.liquid) + " " + CFG.ticker,
+      usdSub(state.liquid),
+      readyToCompound);
+    const c4 = row2.addStack(); c4.layoutVertically(); c4.size = new Size(CARD_W, 0);
     addCard(c4, C.unbond, "clock.arrow.circlepath", "Unbonding",
       fmtNum(state.unbonding) + " " + CFG.ticker,
       usdSub(state.unbonding),
       false);
-  } else {
-    addCard(c4, C.usd, "banknote.fill", "Total Value",
-      fmtUsd(totalUsd),
-      fmtNum(totalTics) + " " + CFG.ticker,
-      false);
-  }
 
-  // Validator breakdown (large only)
-  if (LARGE && state.validators.length) {
-    w.addSpacer(GAP);
-    const secTitle = w.addText("DELEGATIONS");
-    secTitle.font = f(9, "semibold");
-    secTitle.textColor = C.sub;
-    w.addSpacer(4);
+    // Validator breakdown
+    if (state.validators.length) {
+      w.addSpacer(GAP);
+      const secTitle = w.addText("DELEGATIONS");
+      secTitle.font = f(9, "semibold");
+      secTitle.textColor = C.sub;
+      w.addSpacer(4);
 
-    for (const v of state.validators) {
-      const row = w.addStack();
-      row.centerAlignContent();
-      const dot = row.addStack();
-      dot.size = new Size(6, 6);
-      dot.cornerRadius = 3;
-      dot.backgroundColor = new Color(C.staked);
-      row.addSpacer(6);
-      const n = row.addText(v.name);
-      n.font = f(10, "medium");
-      n.textColor = new Color("#ffffff", 0.8);
-      n.lineLimit = 1;
-      n.minimumScaleFactor = 0.6;
-      row.addSpacer();
-      const a = row.addText(fmtNum(v.amt) + " " + CFG.ticker);
-      a.font = f(10, "semibold");
-      a.textColor = C.text;
-      a.lineLimit = 1;
-      w.addSpacer(3);
+      for (const v of state.validators) {
+        const row = w.addStack();
+        row.centerAlignContent();
+        const dot = row.addStack();
+        dot.size = new Size(6, 6);
+        dot.cornerRadius = 3;
+        dot.backgroundColor = new Color(C.staked);
+        row.addSpacer(6);
+        const n = row.addText(v.name);
+        n.font = f(10, "medium");
+        n.textColor = new Color("#ffffff", 0.8);
+        n.lineLimit = 1;
+        n.minimumScaleFactor = 0.6;
+        row.addSpacer();
+        const a = row.addText(fmtNum(v.amt) + " " + CFG.ticker);
+        a.font = f(10, "semibold");
+        a.textColor = C.text;
+        a.lineLimit = 1;
+        w.addSpacer(3);
+      }
     }
+  } else {
+    // ── MEDIUM: hero total left, compact stat rows right ─────────────
+    // A 2x2 grid of cards does not fit medium's ~133pt of content height once
+    // each card carries a badge, a value and a USD line. This shape does, with
+    // margin to spare, instead of relying on iOS to shrink text into place.
+    const body = w.addStack();
+    body.centerAlignContent();
+
+    const left = body.addStack();
+    left.layoutVertically();
+    const lbl = left.addText("TOTAL VALUE");
+    lbl.font = f(9, "semibold");
+    lbl.textColor = C.sub;
+    const hero = left.addText(fmtUsd(totalUsd));
+    hero.font = Font.boldRoundedSystemFont(
+      valueFont(fmtUsd(totalUsd), Math.round(30 * CFG.fontScale)));
+    hero.textColor = C.text;
+    hero.lineLimit = 1;
+    hero.minimumScaleFactor = 0.5;
+    const heroSub = left.addText(fmtNum(totalTics) + " " + CFG.ticker);
+    heroSub.font = f(9, "medium");
+    heroSub.textColor = C.sub;
+    heroSub.lineLimit = 1;
+
+    body.addSpacer();
+
+    const rows = body.addStack();
+    rows.layoutVertically();
+    rows.spacing = 4;
+    rows.size = new Size(158, 0);
+
+    // Row form of the compound marker: same tint and threshold as the cards.
+    function addStatRow(colorHex, label, value, marked) {
+      const row = rows.addStack();
+      row.centerAlignContent();
+      row.setPadding(2, 6, 2, 6);
+      row.cornerRadius = 8;
+      if (marked) {
+        row.backgroundColor = new Color(colorHex, 0.1);
+        row.borderWidth = 1;
+        row.borderColor = new Color(colorHex, 0.35);
+      }
+      const dot = row.addStack();
+      dot.size = new Size(7, 7);
+      dot.cornerRadius = 3.5;
+      dot.backgroundColor = new Color(colorHex);
+      row.addSpacer(7);
+      const l = row.addText(label);
+      l.font = f(11, "medium");
+      l.textColor = new Color("#ffffff", 0.75);
+      l.lineLimit = 1;
+      row.addSpacer();
+      // No " TICS" suffix here — the header already says it, and the five
+      // characters saved are what let the value run at 13pt.
+      const v = row.addText(value);
+      v.font = Font.boldRoundedSystemFont(13);
+      v.textColor = C.text;
+      v.lineLimit = 1;
+      v.minimumScaleFactor = 0.6;
+    }
+
+    addStatRow(C.staked,  "Staked",    fmtNum(state.staked),  false);
+    addStatRow(C.rewards, "Rewards",   fmtNum(state.rewards), readyToCompound);
+    addStatRow(C.liquid,  "Available", fmtNum(state.liquid),  readyToCompound);
   }
 
   w.addSpacer();
