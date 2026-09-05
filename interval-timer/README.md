@@ -47,10 +47,11 @@ python3 -m http.server 8000
 
 Op de iPhone:
 
-1. Zet de map op een https-adres (bijvoorbeeld GitHub Pages: repo-instellingen
-   → Pages → branch + map `/interval-timer`). Een service worker en wake lock
-   werken alleen via https of localhost.
-2. Open de URL in Safari.
+1. Open **https://bbruijn.github.io/Claude/** in Safari. Die pagina wordt door
+   `.github/workflows/pages.yml` automatisch bijgewerkt bij elke wijziging in
+   `interval-timer/` op `main`. (Https is nodig: service worker en wake lock
+   werken alleen via https of localhost.)
+2. Wacht bij de eerste keer tot de workflow groen is (tabblad Actions).
 3. Deelknop → **Zet op beginscherm**.
 4. Start hem vanaf het beginscherm: geen browserbalken, eigen icoon.
 
