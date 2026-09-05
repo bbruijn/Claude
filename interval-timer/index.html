@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
+<title>Interval Timer</title>
+<meta name="description" content="Interval timer voor werk/rust trainingen.">
+<meta name="theme-color" content="#0d0d0f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Interval Timer">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div class="app" id="app">
+
+  <!-- ── Hero: fase, grote klok, startknop ───────────────────────── -->
+  <header class="hero" id="hero">
+    <div class="hero-top">
+      <h1 class="phase" id="phaseLabel">Interval Timer</h1>
+      <div class="hero-meta" id="heroMeta" hidden>
+        <span id="metaRound">Ronde 1/8</span>
+        <span class="dot">·</span>
+        <span id="metaExercise">Oefening 1/1</span>
+      </div>
+    </div>
+
+    <div class="clock" id="clock">18:30</div>
+
+    <div class="hero-bottom">
+      <span class="total-left" id="totalLeft">Totaal 18:30</span>
+    </div>
+
+    <div class="progress" id="progress"><i id="progressBar"></i></div>
+
+    <button class="fab" id="playBtn" type="button" aria-label="Start">
+      <svg viewBox="0 0 24 24" class="ico-play" aria-hidden="true"><path d="M8 5.5v13l11-6.5z"/></svg>
+      <svg viewBox="0 0 24 24" class="ico-pause" aria-hidden="true"><path d="M7 5h3.4v14H7zm6.6 0H17v14h-3.4z"/></svg>
+    </button>
+  </header>
+
+  <!-- ── Instellingen ────────────────────────────────────────────── -->
+  <main class="list" id="list">
+
+    <button class="row row--load" id="rowLoad" type="button">
+      <span class="ic ic-load" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><rect x="3.2" y="5" width="17.6" height="14" rx="2.4" fill="none" stroke="currentColor" stroke-width="1.9"/><path d="M5.6 7.4h3.6v9.2H5.6z"/><path d="M11.4 8.6h7v1.7h-7zm0 3.4h7v1.7h-7z" opacity=".75"/></svg>
+      </span>
+      <span class="row-label">Laad Vorige Training</span>
+      <span class="row-value chev" aria-hidden="true">»</span>
+    </button>
+
+    <button class="row row--work" id="rowWork" type="button" data-field="work">
+      <span class="ic ic-work" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M10 8.5v7l5.5-3.5z" fill="#000"/></svg>
+      </span>
+      <span class="row-label">Werk</span>
+      <span class="row-value" id="valWork">01:00</span>
+    </button>
+
+    <button class="row row--rest" id="rowRest" type="button" data-field="rest">
+      <span class="ic ic-rest" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.6 8h1.6v8H9.6zm3.2 0h1.6v8h-1.6z" fill="#000"/></svg>
+      </span>
+      <span class="row-label">Uitrusten</span>
+      <span class="row-value" id="valRest">01:30</span>
+    </button>
+
+    <button class="row row--ex" id="rowExercises" type="button" data-field="exercises">
+      <span class="ic ic-ex" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M13 6.5 8.5 13h3l-.5 4.5L15.5 11h-3z" fill="#000"/></svg>
+      </span>
+      <span class="row-label">Oefeningen</span>
+      <span class="row-value" id="valExercises">1</span>
+    </button>
+
+    <button class="row row--rounds" id="rowRounds" type="button" data-field="rounds">
+      <span class="ic ic-rounds" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="M12 4a8 8 0 1 0 7.4 5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><path d="M12 1.6 15 4.4 12 7z"/></svg>
+      </span>
+      <span class="row-label">Rondes</span>
+      <span class="row-value" id="valRounds">8X</span>
+    </button>
+
+    <button class="row row--reset" id="rowResetRound" type="button" data-field="resetRound">
+      <span class="ic ic-reset" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M11.1 6.6h1.8v6.1l4 2.3-.9 1.6-4.9-2.8z"/></svg>
+      </span>
+      <span class="row-label">Ronde resetten</span>
+      <span class="row-value" id="valResetRound">00:00</span>
+    </button>
+
+    <div class="actions">
+      <button class="ghost" id="btnReset" type="button">Herstellen</button>
+      <button class="ghost" id="btnSave" type="button">Training opslaan</button>
+      <button class="ghost" id="btnSound" type="button" aria-pressed="true">Geluid aan</button>
+    </div>
+
+    <p class="hint">Tik op een rij om aan te passen. Voeg toe aan je beginscherm voor een volledig scherm.</p>
+  </main>
+</div>
+
+<!-- ── Bewerk-sheet ──────────────────────────────────────────────── -->
+<div class="sheet-wrap" id="sheetWrap" hidden>
+  <div class="scrim" id="scrim"></div>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+    <div class="grabber"></div>
+    <h2 id="sheetTitle">Werk</h2>
+    <div class="stepper">
+      <button class="step" id="stepDown" type="button" aria-label="Minder">−</button>
+      <div class="step-value" id="stepValue">01:00</div>
+      <button class="step" id="stepUp" type="button" aria-label="Meer">+</button>
+    </div>
+    <div class="presets" id="presets"></div>
+    <div class="sheet-actions">
+      <button class="ghost" id="sheetCancel" type="button">Annuleren</button>
+      <button class="primary" id="sheetOk" type="button">Klaar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Trainingen-sheet ──────────────────────────────────────────── -->
+<div class="sheet-wrap" id="loadWrap" hidden>
+  <div class="scrim" id="loadScrim"></div>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="loadTitle">
+    <div class="grabber"></div>
+    <h2 id="loadTitle">Vorige trainingen</h2>
+    <div class="saved" id="savedList"></div>
+    <div class="sheet-actions">
+      <button class="ghost" id="loadClose" type="button">Sluiten</button>
+    </div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
