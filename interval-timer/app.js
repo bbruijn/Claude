@@ -116,9 +116,50 @@
 
   /* ── Geluid ───────────────────────────────────────────────────── */
   let audioCtx = null;
+  let silentTrack = null;
+
+  // Een korte stille WAV als data-URI, opgebouwd zonder losse bestanden.
+  const silentWav = () => {
+    const samples = 2000; // 0,25 s bij 8 kHz
+    const bytes = new Uint8Array(44 + samples).fill(128); // 128 = stilte bij 8-bit
+    const view = new DataView(bytes.buffer);
+    const ascii = (offset, text) => [...text].forEach((c, i) => view.setUint8(offset + i, c.charCodeAt(0)));
+    ascii(0, 'RIFF'); view.setUint32(4, 36 + samples, true);
+    ascii(8, 'WAVEfmt '); view.setUint32(16, 16, true);
+    view.setUint16(20, 1, true); view.setUint16(22, 1, true);
+    view.setUint32(24, 8000, true); view.setUint32(28, 8000, true);
+    view.setUint16(32, 1, true); view.setUint16(34, 8, true);
+    ascii(36, 'data'); view.setUint32(40, samples, true);
+    let binary = '';
+    bytes.forEach((b) => { binary += String.fromCharCode(b); });
+    return `data:audio/wav;base64,${btoa(binary)}`;
+  };
+
+  // iOS dempt Web Audio zodra het belschuifje op stil staat. Een lopend
+  // media-element zet de audiosessie op 'playback', en dan klinkt de timer
+  // ook in stille stand.
+  const holdAudioSession = () => {
+    try {
+      if (navigator.audioSession) navigator.audioSession.type = 'playback';
+    } catch { /* alleen iOS 16.4+ */ }
+    try {
+      if (!silentTrack) {
+        silentTrack = new Audio(silentWav());
+        silentTrack.loop = true;
+        silentTrack.preload = 'auto';
+        silentTrack.setAttribute('playsinline', '');
+      }
+      silentTrack.play().catch(() => { /* mag geweigerd worden */ });
+    } catch { /* geen media-element beschikbaar */ }
+  };
+
+  const releaseAudioSession = () => {
+    if (silentTrack) try { silentTrack.pause(); } catch {}
+  };
 
   const unlockAudio = () => {
     if (!soundOn) return;
+    holdAudioSession();
     try {
       const Ctx = window.AudioContext || window.webkitAudioContext;
       if (!Ctx) return;
@@ -133,13 +174,19 @@
     } catch { /* geen audio beschikbaar */ }
   };
 
-  const beep = (frequency, duration = 0.16, gain = 0.22) => {
+  // De eerste toon valt weg als de context nog aan het hervatten is.
+  const whenAudioReady = (play) => {
+    if (!audioCtx || audioCtx.state !== 'suspended') { play(); return; }
+    audioCtx.resume().then(play, play);
+  };
+
+  const beep = (frequency, duration = 0.16, gain = 0.5) => {
     if (!soundOn || !audioCtx) return;
     try {
       const now = audioCtx.currentTime;
       const osc = audioCtx.createOscillator();
       const amp = audioCtx.createGain();
-      osc.type = 'sine';
+      osc.type = 'triangle';
       osc.frequency.setValueAtTime(frequency, now);
       amp.gain.setValueAtTime(0.0001, now);
       amp.gain.exponentialRampToValueAtTime(gain, now + 0.015);
@@ -153,11 +200,11 @@
   const buzz = (pattern) => { if (navigator.vibrate) try { navigator.vibrate(pattern); } catch {} };
 
   const cue = {
-    tick: () => { beep(760, 0.12, 0.18); buzz(30); },
-    work: () => { beep(980, 0.3, 0.26); setTimeout(() => beep(1240, 0.26, 0.24), 130); buzz([60, 40, 60]); },
-    rest: () => { beep(480, 0.34, 0.24); buzz(90); },
-    reset: () => { beep(620, 0.3, 0.22); buzz(60); },
-    done: () => { [0, 180, 360].forEach((d, i) => setTimeout(() => beep(880 + i * 220, 0.32, 0.26), d)); buzz([100, 60, 100, 60, 200]); }
+    tick: () => { beep(760, 0.12, 0.4); buzz(30); },
+    work: () => { beep(980, 0.3, 0.55); setTimeout(() => beep(1240, 0.26, 0.5), 130); buzz([60, 40, 60]); },
+    rest: () => { beep(480, 0.34, 0.5); buzz(90); },
+    reset: () => { beep(620, 0.3, 0.45); buzz(60); },
+    done: () => { [0, 180, 360].forEach((d, i) => setTimeout(() => beep(880 + i * 220, 0.32, 0.55), d)); buzz([100, 60, 100, 60, 200]); }
   };
 
   /* ── Scherm wakker houden ─────────────────────────────────────── */
@@ -259,7 +306,7 @@
     state.anchor = Date.now();
     state.anchorRemaining = next.duration;
     state.lastBeep = null;
-    cue[next.phase]();
+    whenAudioReady(cue[next.phase]);
     return true;
   };
 
@@ -302,7 +349,7 @@
     state.anchorRemaining = state.remaining;
     state.lastBeep = null;
     requestWakeLock();
-    if (fresh) cue[seg.phase]();
+    if (fresh) whenAudioReady(cue[seg.phase]);
     cancelAnimationFrame(state.raf);
     state.raf = requestAnimationFrame(tick);
     render();
@@ -312,6 +359,7 @@
     state.running = false;
     cancelAnimationFrame(state.raf);
     releaseWakeLock();
+    releaseAudioSession();
     render();
   };
 
@@ -320,6 +368,7 @@
   const hardReset = () => {
     cancelAnimationFrame(state.raf);
     releaseWakeLock();
+    releaseAudioSession();
     resetProgram();
     render();
   };
@@ -436,7 +485,7 @@
     writeJSON(STORE_SOUND, soundOn);
     el.btnSound.textContent = soundOn ? 'Geluid aan' : 'Geluid uit';
     el.btnSound.setAttribute('aria-pressed', String(soundOn));
-    if (soundOn) { unlockAudio(); beep(880, 0.14); }
+    if (soundOn) { unlockAudio(); whenAudioReady(() => beep(880, 0.18)); } else { releaseAudioSession(); }
   });
 
   [el.rowWork, el.rowRest, el.rowExercises, el.rowRounds, el.rowResetRound]
@@ -464,6 +513,7 @@
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState !== 'visible') return;
     if (wakeLock === null && state.running) requestWakeLock();
+    if (state.running) { holdAudioSession(); if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume(); }
     if (!state.running) return;
     let guard = 0;
     while (state.anchorRemaining - (Date.now() - state.anchor) / 1000 <= 0 && guard++ < 10000) {
@@ -474,7 +524,7 @@
     tick();
   });
 
-  window.addEventListener('beforeunload', releaseWakeLock);
+  window.addEventListener('beforeunload', () => { releaseWakeLock(); releaseAudioSession(); });
 
   /* ── Start ────────────────────────────────────────────────────── */
   el.btnSound.textContent = soundOn ? 'Geluid aan' : 'Geluid uit';

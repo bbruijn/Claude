@@ -22,6 +22,9 @@ Verder:
 - Ronde- en oefeningteller, voortgangsbalk en resterende totaaltijd.
 - Pieptonen bij aftellen (3-2-1), bij elke fasewissel en aan het einde,
   plus trilling waar het apparaat dat ondersteunt. Geluid is uit te zetten.
+  Op iOS wordt de audiosessie op `playback` gezet en loopt er tijdens een
+  training een stille track mee, zodat de tonen ook klinken als het
+  belschuifje op stil staat.
 - Scherm blijft aan tijdens de training (Screen Wake Lock).
 - Start/pauze/herstel, instellingen worden lokaal bewaard.
 - Werkt offline via een service worker.
@@ -54,6 +57,15 @@ Op de iPhone:
 2. Wacht bij de eerste keer tot de workflow groen is (tabblad Actions).
 3. Deelknop → **Zet op beginscherm**.
 4. Start hem vanaf het beginscherm: geen browserbalken, eigen icoon.
+
+## Geen geluid?
+
+- Zet het volume omhoog met de volumeknoppen *terwijl de timer loopt* — iOS
+  regelt het mediavolume pas als er iets speelt.
+- Tik één keer op **Geluid aan**: die knop geeft een testtoon en opent
+  meteen de audiosessie.
+- Safari geeft pas geluid na een tik op het scherm; starten met de
+  spatiebalk op een Mac telt ook.
 
 ## Bestanden
 
