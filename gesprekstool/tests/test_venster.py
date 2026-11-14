@@ -2,6 +2,7 @@
 
 Heeft een beeldscherm nodig (op Linux: xvfb-run). Wordt overgeslagen als dat ontbreekt.
 """
+import gc
 import os
 import sys
 import tempfile
@@ -51,6 +52,8 @@ class Venster(unittest.TestCase):
     def tearDown(self):
         if self.app:
             self.app.destroy()
+            self.app = None
+            gc.collect()        # ruim het venster op in de hoofdthread
         for k, v in self._oud.items():
             if v is None:
                 os.environ.pop(k, None)

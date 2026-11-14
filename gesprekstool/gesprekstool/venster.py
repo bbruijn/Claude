@@ -25,6 +25,16 @@ def mooie_naam(template):
     return template.replace("_", " ").replace("-", " ").capitalize()
 
 
+def _controle_taak(wachtrij, sd):
+    """Draait in een achtergrondthread: oude opnames wissen en de computer controleren."""
+    try:
+        gewist = kern.ruim_audio_op()
+        resultaten = kern.controle(sd=sd)
+    except Exception as e:
+        gewist, resultaten = 0, [("fout", "De controle is mislukt (%s)" % e)]
+    wachtrij.put(("controle", (resultaten, gewist)))
+
+
 class App(tk.Tk):
     def __init__(self, sd=None):
         super().__init__()
@@ -60,7 +70,7 @@ class App(tk.Tk):
         self.toon_start()
         self._timers = {}
         self._timers["pomp"] = self.after(100, self._pomp)
-        threading.Thread(target=self._controle_op_achtergrond, daemon=True).start()
+        self._start_controle()
 
     # ------------------------------------------------------------- opmaak
     def _stijl(self):
@@ -453,13 +463,11 @@ class App(tk.Tk):
         self.toon_start()
 
     # ----------------------------------------------------------- controle
-    def _controle_op_achtergrond(self):
-        try:
-            gewist = kern.ruim_audio_op()
-            resultaten = kern.controle(sd=self.sd)
-        except Exception as e:
-            gewist, resultaten = 0, [("fout", "De controle is mislukt (%s)" % e)]
-        self.gebeurtenissen.put(("controle", (resultaten, gewist)))
+    def _start_controle(self):
+        # De thread krijgt alleen de wachtrij mee, geen verwijzing naar het venster: Tk mag
+        # uitsluitend vanuit de hoofdthread worden gebruikt en opgeruimd.
+        threading.Thread(target=_controle_taak, args=(self.gebeurtenissen, self.sd),
+                         daemon=True).start()
 
     def _toon_status(self, gewist=0):
         fouten = [t for n, t in self.controle if n == "fout"]
@@ -482,7 +490,7 @@ class App(tk.Tk):
             self.controle = None
             self.status.configure(fg=ZACHT, text="Bezig met controleren...")
             self._werk_start_bij()
-            threading.Thread(target=self._controle_op_achtergrond, daemon=True).start()
+            self._start_controle()
         self.toon_controle()
 
     def toon_controle(self):
