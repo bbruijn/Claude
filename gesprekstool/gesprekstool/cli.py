@@ -58,9 +58,8 @@ def main(argv=None):
         if args.venstertest:
             return _venstertest()
         if args.controle:
-            resultaten = kern.controle()
-            for niveau, tekst in resultaten:
-                print("[%s] %s" % (TEKENS[niveau], tekst))
+            resultaten = kern.controle(
+                meld=lambda niveau, tekst: print("[%s] %s" % (TEKENS[niveau], tekst), flush=True))
             gereed = kern.is_gereed(resultaten)
             print("\nKlaar voor gebruik." if gereed else "\nNiet klaar voor gebruik (zie FOUT).")
             return 0 if gereed else 1

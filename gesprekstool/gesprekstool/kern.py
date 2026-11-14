@@ -42,10 +42,13 @@ CFG = dict(STANDAARD)
 
 SANDBOX_EXEC = "/usr/bin/sandbox-exec"
 SB_GEEN_NETWERK = "(version 1)(allow default)(deny network*)"
+# Alleen verkeer binnen de computer. Per soort verkeer benoemd: een algemene regel op het
+# lokale adres laat op macOS ook uitgaand verkeer naar buiten toe (gebleken in de rooktest).
 SB_ALLEEN_LOOPBACK = (
     SB_GEEN_NETWERK
-    + '(allow network* (local ip "localhost:*"))'
-    + '(allow network* (remote ip "localhost:*"))'
+    + '(allow network-bind (local ip "localhost:*"))'
+    + '(allow network-inbound (local ip "localhost:*"))'
+    + '(allow network-outbound (remote ip "localhost:*"))'
 )
 FIREWALL_REGEL = "Gesprekstool netwerkblokkade"    # zelfde naam als in beheer/windows-installeren.ps1
 
@@ -674,15 +677,21 @@ def netwerkproef(soort):
         return 4
 
 
-def controle(sd=None):
+def controle(sd=None, meld=None):
     """Controleert of de laptop klaar is voor gebruik. Geeft een lijst (niveau, tekst).
 
     niveau: 'ok', 'let_op' (werkt, maar verdient aandacht) of 'fout' (werkt niet).
+    meld(niveau, tekst) wordt aangeroepen zodra een onderdeel gecontroleerd is.
     """
     uit = []
 
-    def regel(goed, tekst, let_op=False):
-        uit.append(("ok" if goed else ("let_op" if let_op else "fout"), tekst))
+    def regel(goed, tekst, let_op=False, anders=None):
+        """anders = de tekst als het onderdeel niet in orde is."""
+        resultaat = ("ok" if goed else ("let_op" if let_op else "fout"),
+                     tekst if goed or anders is None else anders)
+        uit.append(resultaat)
+        if meld:
+            meld(*resultaat)
 
     for submap, naam, omschrijving in (("whisper", "whisper-cli", "Spraakherkenning"),
                                        ("llama", "llama-server", "Taalmodel-programma")):
@@ -734,11 +743,13 @@ def controle(sd=None):
                 except OSError:
                     return ""
             regel("FileVault is On" in uitvoer(["/usr/bin/fdesetup", "status"]),
-                  "Schijfversleuteling (FileVault) staat aan", let_op=True)
+                  "Schijfversleuteling (FileVault) staat aan", let_op=True,
+                  anders="Schijfversleuteling (FileVault) staat UIT")
             if "[Excluded]" not in uitvoer(["/usr/bin/tmutil", "isexcluded", echt]):
                 uitvoer(["/usr/bin/tmutil", "addexclusion", echt])
             regel("[Excluded]" in uitvoer(["/usr/bin/tmutil", "isexcluded", echt]),
-                  "Opslagmap is uitgesloten van Time Machine-back-ups", let_op=True)
+                  "Opslagmap is uitgesloten van Time Machine-back-ups", let_op=True,
+                  anders="Opslagmap is NIET uitgesloten van Time Machine-back-ups")
 
     if MAC:
         if not CFG["netwerkblokkade"]:
@@ -753,11 +764,14 @@ def controle(sd=None):
                 except (OSError, subprocess.TimeoutExpired):
                     return 9
             regel(proef(SB_GEEN_NETWERK, "extern") == 0,
-                  "Netwerkblokkade: spraakherkenning kan niet naar buiten")
+                  "Netwerkblokkade: spraakherkenning kan niet naar buiten",
+                  anders="Netwerkblokkade WERKT NIET voor de spraakherkenning")
             regel(proef(SB_ALLEEN_LOOPBACK, "extern") == 0,
-                  "Netwerkblokkade: taalmodel kan niet naar buiten")
+                  "Netwerkblokkade: taalmodel kan niet naar buiten",
+                  anders="Netwerkblokkade WERKT NIET voor het taalmodel")
             regel(proef(SB_ALLEEN_LOOPBACK, "lus") == 0,
-                  "Interne verbinding met het taalmodel (127.0.0.1) werkt")
+                  "Interne verbinding met het taalmodel (127.0.0.1) werkt",
+                  anders="Interne verbinding met het taalmodel (127.0.0.1) werkt NIET")
     elif WINDOWS:
         try:
             code = subprocess.call(["netsh", "advfirewall", "firewall", "show", "rule",

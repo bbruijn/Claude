@@ -68,7 +68,9 @@ verwerk() {  # verwerk <programma> <wav> <naam>: verwacht de bekende zin uit de 
   local map
   map="$(ls -d "$DATA"/*"$3"* | head -1)"
   echo "--- transcript"; cat "$map/transcript.txt"
-  echo "--- logboek"; grep -v '^\[.*\] Start' "$map/verwerking.log" | grep -i 'gpu=\|opgeslagen' || true
+  echo "--- logboek (snelheid en gebruikte rekenkern)"
+  grep -E -i 'gpu=|opgeslagen|system_info|time =|eval time|backend|metal|using device' \
+    "$map/verwerking.log" | cut -c 1-240 || true
   grep -qi 'country' "$map/transcript.txt" || { echo "Transcript klopt niet." >&2; return 1; }
   [[ -s "$map/verslag.txt" ]] || { echo "Geen verslag gemaakt." >&2; return 1; }
 }
@@ -79,7 +81,7 @@ kop "Versie"
 kop "Controle van het pakket"
 controleer "$CLI"
 if [[ -z "$WINDOWS" ]]; then
-  aantal="$(grep -E -c '^\[OK.*(Netwerkblokkade|Interne verbinding)' "$TMP/controle.txt" || true)"
+  aantal="$(grep -E -c '^\[OK.*(Netwerkblokkade:|Interne verbinding)' "$TMP/controle.txt" || true)"
   [[ "$aantal" == "3" ]] || { echo "De netwerkblokkade (sandbox) werkt niet: $aantal/3." >&2; exit 1; }
 fi
 
