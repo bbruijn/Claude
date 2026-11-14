@@ -43,11 +43,13 @@ class App(tk.Tk):
         self.meta = None
         self.scherm = ""
         self.w = {}                       # widgets van het huidige scherm
+        self._controle_bezig = True
+        self._controlevenster = None
 
         kop = tk.Frame(self, bg=BG)
         kop.pack(fill="x", padx=24, pady=(18, 6))
         tk.Label(kop, text="Gesprekstool", font=self.f["kop"], bg=BG, fg=TEKST).pack(side="left")
-        ttk.Button(kop, text="Controle", command=self.toon_controle).pack(side="right")
+        ttk.Button(kop, text="Controle", command=self.controleer_opnieuw).pack(side="right")
         self.status = tk.Label(self, text="Bezig met controleren...", font=self.f["klein"],
                                bg=BG, fg=ZACHT, anchor="w", justify="left", wraplength=840)
         self.status.pack(side="bottom", fill="x", padx=24, pady=(4, 12))
@@ -473,15 +475,29 @@ class App(tk.Tk):
             tekst += " (%d oude opname(s) gewist.)" % gewist
         self.status.configure(fg=GROEN, text=tekst)
 
+    def controleer_opnieuw(self):
+        """Controle-knop: toont het venster en controleert opnieuw (niet tijdens een opname)."""
+        if not self.opname and not self.verwerking and not self._controle_bezig:
+            self._controle_bezig = True
+            self.controle = None
+            self.status.configure(fg=ZACHT, text="Bezig met controleren...")
+            self._werk_start_bij()
+            threading.Thread(target=self._controle_op_achtergrond, daemon=True).start()
+        self.toon_controle()
+
     def toon_controle(self):
-        venster = tk.Toplevel(self)
-        venster.title("Controle")
-        venster.configure(bg=KAART)
-        venster.geometry("760x520")
+        venster = self._controlevenster
+        if venster is None or not venster.winfo_exists():
+            venster = self._controlevenster = tk.Toplevel(self)
+            venster.title("Controle")
+            venster.configure(bg=KAART)
+            venster.geometry("760x540")
+        for kind in venster.winfo_children():
+            kind.destroy()
         tk.Label(venster, text="Controle van deze computer", font=self.f["sub"], bg=KAART,
                  fg=TEKST).pack(anchor="w", padx=20, pady=(16, 8))
         if self.controle is None:
-            tk.Label(venster, text="De controle is nog bezig. Probeer het zo opnieuw.", bg=KAART,
+            tk.Label(venster, text="Bezig met controleren...", bg=KAART,
                      fg=ZACHT, font=self.f["norm"]).pack(anchor="w", padx=20)
         for niveau, tekst in self.controle or []:
             rij = tk.Frame(venster, bg=KAART)
@@ -506,8 +522,11 @@ class App(tk.Tk):
     def _verwerk_gebeurtenis(self, soort, waarde):
         if soort == "controle":
             self.controle, gewist = waarde
+            self._controle_bezig = False
             self._toon_status(gewist)
             self._werk_start_bij()
+            if self._controlevenster is not None and self._controlevenster.winfo_exists():
+                self.toon_controle()
             return
         if self.scherm != "verwerk":
             return
@@ -539,6 +558,19 @@ class App(tk.Tk):
                                          "Je kunt het later opnieuw proberen via 'Eerdere "
                                          "gesprekken'.", parent=self)
                 self.toon_start()
+
+    def report_callback_exception(self, soort, fout, spoor):
+        """Onverwachte fout in het venster: vastleggen en melden in plaats van stil vastlopen."""
+        details = "".join(traceback.format_exception(soort, fout, spoor))
+        try:
+            kern.gebruikers_map().mkdir(parents=True, exist_ok=True)
+            with open(str(kern.gebruikers_map() / "fouten.log"), "a", encoding="utf-8") as f:
+                f.write(details + "\n")
+        except OSError:
+            pass
+        messagebox.showerror("Gesprekstool", "Er ging iets onverwachts mis (%s).\n\nEen lopende "
+                             "opname gaat gewoon door. Meld dit bij ICT als het vaker gebeurt."
+                             % fout, parent=self)
 
     def destroy(self):
         for timer in self._timers.values():

@@ -24,9 +24,19 @@ def _sounddevice():
         raise Fout("De audio-ondersteuning kon niet worden geladen (%s)." % e)
 
 
+def ververs_apparaten(sd):
+    """Laat de audiobibliotheek opnieuw kijken welke microfoons er zijn (bijv. na insteken)."""
+    try:
+        sd._terminate()
+        sd._initialize()
+    except Exception:
+        pass
+
+
 def controleer_microfoon(apparaat=None, sd=None):
     """Geeft de naam van de microfoon, of gooit Fout als er geen bruikbare is."""
     sd = sd or _sounddevice()
+    ververs_apparaten(sd)
     try:
         info = sd.query_devices(apparaat, "input")
     except Exception as e:

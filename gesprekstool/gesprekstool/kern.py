@@ -498,6 +498,7 @@ class Verwerking:
                 if m and totaal:
                     h, mnt, s = (int(x) for x in m.groups())
                     self.voortgang(min(1.0, (h * 3600 + mnt * 60 + s) / totaal))
+            self._proc.stdout.close()
             code = self._proc.wait()
             self._controleer()
             if code == 0 and uit.is_file():

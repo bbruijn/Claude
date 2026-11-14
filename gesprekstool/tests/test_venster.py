@@ -158,6 +158,29 @@ class Venster(unittest.TestCase):
         app._werk_start_bij()
         self.assertEqual(str(app.w["start"]["state"]), "disabled")
 
+    def test_microfoon_later_aansluiten_en_opnieuw_controleren(self):
+        self.sd.geen_microfoon = True
+        app = self.start()
+        self.assertIn("Niet klaar voor gebruik", app.status["text"])
+        self.sd.geen_microfoon = False            # docent sluit een microfoon aan
+        app.controleer_opnieuw()
+        self.assertIsNone(app.controle)
+        self.wacht(lambda: app.controle is not None)
+        self.assertIn("Klaar voor gebruik", app.status["text"])
+        teksten = [k["text"] for rij in app._controlevenster.winfo_children()
+                   for k in rij.winfo_children() if k.winfo_class() == "Label"]
+        self.assertIn("Microfoon gevonden", teksten)
+        self.neem_op()
+        self.assertEqual(app.scherm, "opname")
+        app.gooi_opname_weg()
+
+    def test_onverwachte_fout_wordt_gemeld(self):
+        app = self.start()
+        app.after(0, lambda: 1 / 0)
+        self.wacht(lambda: self.meldingen.gemeld)
+        self.assertIn("onverwachts", self.meldingen.gemeld[-1][1])
+        self.assertIn("ZeroDivisionError", (kern.gebruikers_map() / "fouten.log").read_text("utf-8"))
+
     def test_verwijderen_en_weggooien(self):
         app = self.start()
         self.neem_op()

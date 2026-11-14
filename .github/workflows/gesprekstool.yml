@@ -57,7 +57,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { os: macos-14, naam: macos-arm64 }
+          - { os: macos-latest, naam: macos-arm64 }
           - { os: windows-latest, naam: windows-x64 }
     runs-on: ${{ matrix.os }}
     timeout-minutes: 120
@@ -73,7 +73,7 @@ jobs:
 
       - name: Eerder gebouwde hulpprogramma's hergebruiken
         id: bin
-        uses: actions/cache@v4
+        uses: actions/cache/restore@v4
         with:
           path: gesprekstool/bin
           key: bin-${{ matrix.naam }}-${{ env.WHISPER_TAG }}-${{ env.LLAMA_TAG }}-${{ hashFiles('gesprekstool/bouw/bouw-binaries.sh') }}
@@ -81,6 +81,14 @@ jobs:
       - name: whisper.cpp en llama.cpp bouwen
         if: steps.bin.outputs.cache-hit != 'true'
         run: bouw/bouw-binaries.sh
+
+      # Direct bewaren, zodat een latere mislukte stap het bouwwerk niet weggooit.
+      - name: Gebouwde hulpprogramma's bewaren
+        if: steps.bin.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: gesprekstool/bin
+          key: ${{ steps.bin.outputs.cache-primary-key }}
 
       - name: Programma bouwen (PyInstaller)
         run: |
