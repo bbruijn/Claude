@@ -297,16 +297,22 @@ verslagen en gemeten tijden staan in
 en `modellen-ophalen.sh` op Linux gebruikt, inclusief het hervatten van een afgebroken
 download.
 
+**Eenmalig getest op een echte Mac:** op een MacBook Air (M5, 32 GB, macOS 27.2) is het
+pakket via de browser gedownload en met `mac-installeren.sh` geinstalleerd, met het grote
+taalmodel (12b). De controle gaf geen fouten, ook niet voor de netwerkblokkade, FileVault
+en Time Machine. Een proefopname met de microfoon leverde een bruikbaar verslag op. De
+verwerkingstijd is daarbij niet gemeten.
+
 **Nog niet getest: doe dit in de proef op school.**
 
-1. Opnemen met een echte microfoon op een echte laptop, inclusief de toestemmingsvraag
-   van macOS.
+1. Opnemen met een echte microfoon op een Windows-laptop, en op Macs met minder
+   werkgeheugen of een oudere chip.
 2. De kwaliteit bij echte gesprekken: meerdere mensen in een lokaal, door elkaar praten,
    achtergrondgeluid, dialect en namen. De test hierboven gebruikte duidelijke
    computerstemmen.
 3. De verwerkingstijd op de laptops van de school.
-4. Het gedrag onder de beveiliging van de school: Gatekeeper, SmartScreen, AppLocker of
-   WDAC, en de virusscanner.
+4. Het gedrag onder de beveiliging van de school: beheerde Macs (MDM), SmartScreen,
+   AppLocker of WDAC, en de virusscanner.
 5. Gesprekken van een uur of langer.
 
 ## 10. Zelf bouwen
