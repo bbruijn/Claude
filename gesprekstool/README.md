@@ -1,103 +1,59 @@
-# Gesprekstool (volledig offline)
+# Gesprekstool
 
-Neemt oudergesprekken en leerlinggesprekken op, transcribeert ze en vat ze samen
-volgens een template. Alles draait lokaal op de Mac.
+Neemt oudergesprekken en leerlinggesprekken op, schrijft ze uit en maakt een verslag
+volgens een vast template. Alles gebeurt op de eigen laptop: er is geen internet nodig
+en opname, transcript en verslag verlaten de laptop niet.
 
-| Stap | Programma | Model |
-| --- | --- | --- |
-| Opnemen | ffmpeg | – |
-| Transcriberen | whisper.cpp | large-v3-turbo |
-| Samenvatten | llama.cpp | Gemma 3 (12b bij ≥ 16 GB RAM, anders 4b) |
+- **Docenten:** lees *Zo werkt het* hieronder.
+- **ICT en schoolleiding:** lees [BEHEER.md](BEHEER.md) voor eisen, installatie en advies.
 
-## Installeren (eenmalig, met internet)
+## Zo werkt het
 
-1. Installeer [Homebrew](https://brew.sh) als je dat nog niet hebt.
-2. Haal deze map op de Mac en draai:
-   ```bash
-   cd gesprekstool
-   ./install.sh
-   ```
-3. Wacht tot de modellen binnen zijn (ca. 4–9 GB).
-4. Lees de uitvoer van de controle aan het eind: alles moet `OK` zijn.
+![Startscherm](docs/scherm-start.png)
 
-Daarna is internet niet meer nodig. Je kunt wifi uitzetten.
+1. Open **Gesprekstool**.
+2. Kies het soort gesprek en vul eventueel de naam van de leerling in.
+3. Vertel de aanwezigen dat het gesprek wordt opgenomen en vink dat aan.
+4. Klik op **Start opname**. Leg de laptop tussen de sprekers in.
+5. Klik na het gesprek op **Stop en maak verslag**.
+6. Wacht tot het verslag verschijnt. Dat duurt enkele minuten; laat de laptop open staan.
+7. Lees het verslag na, verbeter waar nodig en klik op **Kopieer verslag**.
+8. Plak het verslag in het leerlingvolgsysteem.
 
-## Gebruiken
+![Opnamescherm](docs/scherm-opname.png)
 
-1. Open Terminal en typ `gesprek`.
-2. Kies het soort gesprek en vul (optioneel) de naam van de leerling in.
-3. Druk op Enter om de opname te stoppen.
-4. Wacht op transcript en samenvatting. De map opent vanzelf in Finder.
+## Goed om te weten
 
-De eerste keer vraagt macOS om microfoontoegang voor Terminal: kies *Sta toe*.
+- **De balk onder de tijd** laat zien of de microfoon geluid opvangt. Beweegt hij niet,
+  dan komt er geen geluid binnen.
+- **Pauze** stopt de opname tijdelijk, bijvoorbeeld als iemand iets vertrouwelijks wil zeggen.
+- **Opname weggooien** verwijdert de opname direct en definitief.
+- **Gaat er iets mis** bij het maken van het verslag, dan blijft de opname bewaard. Kies het
+  gesprek onder *Eerdere gesprekken* en klik op **Openen** om het opnieuw te proberen.
+- **Lees het verslag altijd na.** De computer kan woorden verkeerd verstaan en weet niet
+  wie wat zei.
+- **Opnames worden automatisch gewist** 14 dagen nadat het verslag is gemaakt (de school
+  kan deze termijn aanpassen). Transcript en verslag blijven staan tot je ze verwijdert.
+- Staat onderaan in rood *Niet klaar voor gebruik*? Klik op **Controle** en geef de
+  melding door aan ICT.
 
-Per gesprek krijg je een map in `~/GesprekkenLokaal`:
+![Verslagscherm](docs/scherm-verslag.png)
 
-```
-2026-11-14_1530_oudergesprek_sam/
-  opname.wav        de opname
-  transcript.txt    het volledige transcript
-  samenvatting.md   het ingevulde template
-```
-
-Overige commando's:
-
-| Commando | Doel |
-| --- | --- |
-| `gesprek verwerk opname.m4a` | bestaand audiobestand verwerken |
-| `gesprek samenvat <map> --template leerlinggesprek` | samenvatting opnieuw maken |
-| `gesprek controle` | installatie, opslag en netwerkblokkade controleren |
-| `gesprek microfoons` | beschikbare microfoons tonen |
-
-## Templates aanpassen
-
-Templates staan in `~/.gesprekstool/templates` als Markdown-bestanden. Pas de koppen
-aan of zet er een nieuw `.md`-bestand bij; het verschijnt vanzelf in het keuzemenu.
-`{datum}` en `{naam}` worden automatisch ingevuld.
-
-## Instellingen
-
-`~/.gesprekstool/config.json`:
-
-| Instelling | Betekenis |
-| --- | --- |
-| `data_map` | waar gesprekken worden opgeslagen |
-| `microfoon` | `:default` of bijvoorbeeld `:1` (zie `gesprek microfoons`) |
-| `verwijder_audio_na_verwerking` | `true` = opname wissen zodra de samenvatting klaar is |
-| `whisper_prompt` | namen en vaktermen die vaak verkeerd verstaan worden |
-| `sandbox` | netwerkblokkade aan/uit (laat aan) |
-
-## Hoe blijft de data op de laptop
-
-- **Geen netwerk:** ffmpeg, whisper.cpp en llama.cpp draaien in een macOS-sandbox
-  die netwerkverkeer op systeemniveau blokkeert. Het taalmodel is alleen bereikbaar
-  op `127.0.0.1` (binnen de laptop). Werkt de blokkade niet, dan weigert de tool te starten.
-- **Geen cloudmap:** gesprekken staan in `~/GesprekkenLokaal`, buiten iCloud Drive,
-  alleen leesbaar voor jouw account.
-- **Geen back-up naar buiten:** de map is uitgesloten van Time Machine.
-- **Versleuteling:** `gesprek controle` waarschuwt als FileVault uit staat.
-
-Zelf controleren: zet wifi uit en draai `gesprek`. Alles werkt hetzelfde.
-
-Wat de tool niet kan afdwingen: zet de map niet zelf in een cloudmap, en deel
-verslagen alleen via de kanalen die je school daarvoor toestaat.
-
-## Beperkingen
-
-- Het transcript labelt geen sprekers.
-- Transcript en samenvatting kunnen fouten bevatten: lees het verslag altijd na.
-- Informeer ouders en leerlingen vooraf dat het gesprek wordt opgenomen (AVG).
-
-## Verwijderen
+## Voor ontwikkelaars
 
 ```bash
-rm -rf ~/.gesprekstool "$(brew --prefix)/bin/gesprek"
+# Tests (nagebootste microfoon, spraakherkenning en taalmodel)
+xvfb-run -a python3 -m unittest discover -s tests -v      # op macOS/Windows zonder xvfb-run
+
+# Starten vanuit de broncode (vereist: pip install sounddevice, en whisper-cli + llama-server)
+python3 start.py              # venster
+python3 start.py --controle   # controle op de opdrachtregel
 ```
 
-Gesprekken in `~/GesprekkenLokaal` verwijder je zelf.
-
-## Tests
-
-```bash
-python3 -m unittest discover -s gesprekstool/tests -v
-```
+| Map | Inhoud |
+| --- | --- |
+| `gesprekstool/` | de code: `kern.py` (verwerking), `opname.py` (microfoon), `venster.py` (scherm), `cli.py` |
+| `templates/` | de verslagtemplates |
+| `beheer/` | scripts voor ICT: modellen ophalen en installeren |
+| `bouw/` | pakketten bouwen en testen (gebruikt door GitHub Actions) |
+| `tests/` | geautomatiseerde tests |

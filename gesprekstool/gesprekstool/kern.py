@@ -47,7 +47,7 @@ SB_ALLEEN_LOOPBACK = (
     + '(allow network* (local ip "localhost:*"))'
     + '(allow network* (remote ip "localhost:*"))'
 )
-FIREWALL_REGEL = "Gesprekstool netwerkblokkade"    # naam van de regel uit beheer/windows-firewall.ps1
+FIREWALL_REGEL = "Gesprekstool netwerkblokkade"    # zelfde naam als in beheer/windows-installeren.ps1
 
 UITVOER_TOKENS = 2000      # ruimte voor het verslag
 NOTITIE_TOKENS = 800       # ruimte per deel bij lange gesprekken
@@ -734,6 +734,8 @@ def controle(sd=None):
                     return ""
             regel("FileVault is On" in uitvoer(["/usr/bin/fdesetup", "status"]),
                   "Schijfversleuteling (FileVault) staat aan", let_op=True)
+            if "[Excluded]" not in uitvoer(["/usr/bin/tmutil", "isexcluded", echt]):
+                uitvoer(["/usr/bin/tmutil", "addexclusion", echt])
             regel("[Excluded]" in uitvoer(["/usr/bin/tmutil", "isexcluded", echt]),
                   "Opslagmap is uitgesloten van Time Machine-back-ups", let_op=True)
 

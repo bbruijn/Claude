@@ -20,6 +20,21 @@ def _verwerk(map_, meta):
     print("\n\nKlaar: %s" % pad)
 
 
+def _venstertest():
+    """Opent het venster kort en sluit het weer: bewijst dat het pakket compleet is."""
+    import time
+    from . import venster
+    app = venster.App()
+    eind = time.time() + 90
+    while app.controle is None and time.time() < eind:
+        app.update()
+        time.sleep(0.05)
+    gelukt = app.controle is not None and app.scherm == "start"
+    app.destroy()
+    print("Venstertest %s." % ("geslaagd" if gelukt else "MISLUKT"))
+    return 0 if gelukt else 1
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(prog="gesprekstool", description="Gesprekstool %s" % VERSIE)
     parser.add_argument("--controle", action="store_true",
@@ -30,6 +45,7 @@ def main(argv=None):
     parser.add_argument("--naam", default="", help="naam van de leerling")
     parser.add_argument("--versie", action="store_true")
     parser.add_argument("--netwerkproef", choices=["extern", "lus"], help=argparse.SUPPRESS)
+    parser.add_argument("--venstertest", action="store_true", help=argparse.SUPPRESS)
     args = parser.parse_args(argv)
 
     if args.netwerkproef:
@@ -39,6 +55,8 @@ def main(argv=None):
         return 0
     try:
         kern.laad_config()
+        if args.venstertest:
+            return _venstertest()
         if args.controle:
             resultaten = kern.controle()
             for niveau, tekst in resultaten:

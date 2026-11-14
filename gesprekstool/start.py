@@ -4,6 +4,8 @@ import sys
 
 
 def main():
+    # Oudere macOS-versies geven een app bij het starten een "-psn_..."-argument mee.
+    sys.argv = [a for a in sys.argv if not a.startswith("-psn")]
     if len(sys.argv) > 1:
         from gesprekstool import cli
         sys.exit(cli.main())
