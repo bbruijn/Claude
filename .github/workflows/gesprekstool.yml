@@ -7,6 +7,7 @@ on:
   push:
     paths:
       - 'gesprekstool/**'
+      - '!gesprekstool/docs/**'      # film en schermafbeeldingen: geen nieuw pakket nodig
       - '.github/workflows/gesprekstool.yml'
   workflow_dispatch:
 

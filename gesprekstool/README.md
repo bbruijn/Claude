@@ -4,6 +4,9 @@ Neemt oudergesprekken en leerlinggesprekken op, schrijft ze uit en maakt een ver
 volgens een vast template. Alles gebeurt op de eigen laptop: er is geen internet nodig
 en opname, transcript en verslag verlaten de laptop niet.
 
+- **Instructiefilm (3 minuten):** [docs/instructiefilm.mp4](docs/instructiefilm.mp4), voor
+  schoolleiding en docenten. De tekst staat in
+  [docs/instructiefilm-script.md](docs/instructiefilm-script.md).
 - **Docenten:** lees *Zo werkt het* hieronder.
 - **ICT en schoolleiding:** lees [BEHEER.md](BEHEER.md) voor eisen, installatie en advies.
 
@@ -57,3 +60,4 @@ python3 start.py --controle   # controle op de opdrachtregel
 | `beheer/` | scripts voor ICT: modellen ophalen en installeren |
 | `bouw/` | pakketten bouwen en testen (gebruikt door GitHub Actions) |
 | `tests/` | geautomatiseerde tests |
+| `docs/film/` | script dat de instructiefilm opnieuw maakt (`maak_film.py`) |
