@@ -35,6 +35,25 @@ def _venstertest():
     return 0 if gelukt else 1
 
 
+def _opnametest():
+    """Neemt kort op met de echte microfoon: bewijst dat opnemen in dit pakket werkt."""
+    import tempfile
+    import time
+    from . import opname
+    with tempfile.TemporaryDirectory() as tmp:
+        pad = Path(tmp) / "test.wav"
+        o = opname.Opname(pad, kern.CFG["microfoon"])
+        o.start()
+        time.sleep(2.5)
+        seconden = o.stop()
+        in_bestand = kern.wav_duur(pad)
+    print("Opnametest: %.1f s opgenomen op %d Hz, %.1f s in het bestand, piek %.3f"
+          % (seconden, o.hz, in_bestand, o.piek))
+    gelukt = seconden >= 1.5 and abs(in_bestand - seconden) < 0.1 and not o.fout
+    print("Opnametest %s." % ("geslaagd" if gelukt else "MISLUKT (%s)" % (o.fout or "te kort")))
+    return 0 if gelukt else 1
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(prog="gesprekstool", description="Gesprekstool %s" % VERSIE)
     parser.add_argument("--controle", action="store_true",
@@ -46,6 +65,7 @@ def main(argv=None):
     parser.add_argument("--versie", action="store_true")
     parser.add_argument("--netwerkproef", choices=["extern", "lus"], help=argparse.SUPPRESS)
     parser.add_argument("--venstertest", action="store_true", help=argparse.SUPPRESS)
+    parser.add_argument("--opnametest", action="store_true", help=argparse.SUPPRESS)
     args = parser.parse_args(argv)
 
     if args.netwerkproef:
@@ -57,6 +77,8 @@ def main(argv=None):
         kern.laad_config()
         if args.venstertest:
             return _venstertest()
+        if args.opnametest:
+            return _opnametest()
         if args.controle:
             resultaten = kern.controle(
                 meld=lambda niveau, tekst: print("[%s] %s" % (TEKENS[niveau], tekst), flush=True))

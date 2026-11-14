@@ -252,7 +252,41 @@ Dit is praktisch advies, geen juridisch oordeel. Leg het voor aan de FG.
   de school deze voorwaarden lezen en accepteren. Wie een ander model wil gebruiken, zet
   een ander `.gguf`-bestand in de map `models`.
 
-## 9. Zelf bouwen
+## 9. Wat is getest en wat niet
+
+**Automatisch getest bij elke wijziging**, op echte macOS- en Windows-machines van GitHub,
+met het pakket zoals ICT het uitrolt:
+
+| Test | Mac | Windows |
+| --- | --- | --- |
+| Pakket start en het venster opent | ja | ja |
+| Controle van de installatie | ja | ja |
+| Netwerkblokkade: verbinding naar buiten wordt geweigerd | ja (sandbox) | firewallregel aanwezig |
+| Taalmodel werkt met de netwerkblokkade actief | ja | ja |
+| Opname naar transcript naar verslag, met echte spraakherkenning en echt taalmodel | ja | ja |
+| Opname van 48 kHz (microfoon die geen 16 kHz levert) | ja | - |
+| Opnemen via de microfoon van de testmachine | ja (virtuele microfoon) | - (testmachine heeft er geen) |
+| Installatiescripts voor ICT | ja | ja |
+| Downloadadressen van de modellen bestaan | ja | ja |
+
+Daarnaast draaien 26 tests met een nagebootste microfoon, spraakherkenning en taalmodel:
+het venster van opname tot verslag, pauzeren, annuleren en later afmaken, fouten tijdens
+het verwerken, een wegvallende microfoon, lange gesprekken, en het wissen van oude opnames.
+
+De automatische tests gebruiken kleine testmodellen en een Engels fragment. Ze bewijzen
+dat de techniek werkt, niet hoe goed de verslagen zijn.
+
+**Nog niet getest: doe dit in de proef op school.**
+
+1. Opnemen met een echte microfoon op een echte laptop, inclusief de toestemmingsvraag
+   van macOS.
+2. De kwaliteit van Nederlandse transcripten en verslagen met de echte modellen.
+3. De verwerkingstijd op de laptops van de school.
+4. Het gedrag onder de beveiliging van de school: Gatekeeper, SmartScreen, AppLocker of
+   WDAC, en de virusscanner.
+5. Gesprekken van een uur of langer.
+
+## 10. Zelf bouwen
 
 De pakketten worden gebouwd door GitHub Actions (`.github/workflows/gesprekstool.yml`) op
 echte macOS- en Windows-machines:

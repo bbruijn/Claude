@@ -94,6 +94,13 @@ if [[ -z "$WINDOWS" ]]; then
   verwerk "$CLI" "$TMP/jfk48.wav" rooktest48
 fi
 
+kop "Opnemen met de microfoon van deze testmachine"
+if grep -q '^\[OK.*Microfoon gevonden' "$TMP/controle.txt"; then
+  "$CLI" --opnametest
+else
+  echo "Deze testmachine heeft geen microfoon: overgeslagen."
+fi
+
 kop "Venster openen en sluiten"
 "$CLI" --venstertest
 
