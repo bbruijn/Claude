@@ -36,6 +36,25 @@ class Opnemen(unittest.TestCase):
         self.assertAlmostEqual(kern.wav_duur(self.pad), seconden, places=3)
         self.assertGreater(o.piek, 0.2)
 
+    def test_geluidsbalk_toont_zachte_spraak_en_houdt_pieken_vast(self):
+        # Niveaus gemeten op een MacBook Air: spraak piekt tussen 0,02 en 0,09.
+        self.assertEqual(opname.balk_fractie(0), 0.0)
+        self.assertEqual(opname.balk_fractie(0.001), 0.0)             # ruis: geen uitslag
+        self.assertGreater(opname.balk_fractie(0.02), 0.35)           # zachte spraak: goed zichtbaar
+        self.assertGreater(opname.balk_fractie(0.09), 0.6)
+        self.assertEqual(opname.balk_fractie(1.0), 1.0)
+        sd = nep.NepSd()
+        o = opname.Opname(self.pad, sd=sd)
+        o.start()
+        time.sleep(0.2)
+        luid = o.niveau
+        sd.stil = True                                                # de spreker valt even stil
+        time.sleep(0.1)
+        self.assertGreater(o.niveau, luid * 0.3, "de balk moet niet direct terugvallen")
+        time.sleep(0.9)
+        self.assertLess(o.niveau, luid * 0.05, "na een seconde stilte is de balk terug")
+        o.stop()
+
     def test_bestand_is_ook_tijdens_opnemen_geldig(self):
         o = opname.Opname(self.pad, sd=nep.NepSd())
         o.start()

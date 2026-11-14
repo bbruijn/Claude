@@ -10,7 +10,7 @@ from tkinter import font as tkfont
 from tkinter import messagebox, ttk
 
 from . import VERSIE, kern
-from .opname import Opname
+from .opname import GEEN_SIGNAAL, ZACHT as ZACHT_GELUID, Opname, balk_fractie
 
 BG, KAART, TEKST, ZACHT = "#f3f4f6", "#ffffff", "#1c2430", "#5b6675"
 ACCENT, ROOD, GROEN, ORANJE, RAND = "#1f5fbf", "#c62828", "#1b7f3b", "#b25e00", "#d5d9e0"
@@ -279,16 +279,22 @@ class App(tk.Tk):
             return
         o = self.opname
         self.w["tijd"].configure(text=kern.duur_tekst(o.seconden))
-        breedte = 0 if o.gepauzeerd else int(420 * min(1.0, o.niveau ** 0.5))
+        breedte = 0 if o.gepauzeerd else int(420 * balk_fractie(o.niveau))
         self.w["meter"].coords(self.w["balk"], 0, 0, breedte, 18)
         if o.fout:
             messagebox.showwarning("Opname", o.fout, parent=self)
             self.stop_opname()
             return
-        if not o.gepauzeerd and o.seconden > 4 and o.piek < 0.01:
+        if o.gepauzeerd:
+            pass
+        elif o.seconden > 4 and o.piek < GEEN_SIGNAAL:
             self.w["hint"].configure(text="Er komt geen geluid binnen. Controleer of de microfoon "
                                      "aan staat en of de gesprekstool toegang heeft tot de microfoon.")
-        elif not o.gepauzeerd:
+        elif o.seconden > 8 and o.piek < ZACHT_GELUID:
+            self.w["hint"].configure(text="De microfoon vangt weinig geluid op. Zet de laptop dichter "
+                                     "bij de sprekers of zet het invoervolume van de microfoon "
+                                     "hoger. De opname loopt gewoon door.")
+        else:
             self.w["hint"].configure(text="")
         self._timers["tik"] = self.after(100, self._tik)
 
@@ -310,7 +316,9 @@ class App(tk.Tk):
         if not self.opname:
             return
         seconden, piek = self._eindig_opname()
-        if seconden < 1 or piek < 0.005:
+        # Alleen afkeuren als er werkelijk niets is binnengekomen: een zachte opname van een
+        # echt gesprek mag nooit worden weggegooid.
+        if seconden < 1 or piek < GEEN_SIGNAAL:
             kern.houd_wakker(False)
             self._gooi_weg(self.map)
             messagebox.showwarning("Opname", "Er is geen geluid opgenomen, dus er is niets bewaard."

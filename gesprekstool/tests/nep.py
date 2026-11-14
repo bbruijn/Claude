@@ -129,9 +129,10 @@ class NepStream:
     def start(self):
         def loop():
             n = self.hz // 100
-            sterkte = 0 if self.sd.stil else 12000
-            blok = struct.pack("<%dh" % n, *[int(sterkte * math.sin(i * 0.3)) for i in range(n)])
+            golf = [math.sin(i * 0.3) for i in range(n)]
             while not self._stop.wait(0.01):
+                sterkte = 0 if self.sd.stil else self.sd.sterkte      # per blok: kan tussentijds wijzigen
+                blok = struct.pack("<%dh" % n, *[int(sterkte * g) for g in golf])
                 self.callback(blok, n, None, None)
                 if self.sd.valt_weg:
                     self.finished()
@@ -152,8 +153,9 @@ class NepStream:
 class NepSd:
     """Staat in voor de module sounddevice."""
 
-    def __init__(self, weiger=(), stil=False, geen_microfoon=False):
+    def __init__(self, weiger=(), stil=False, geen_microfoon=False, sterkte=12000):
         self.weiger, self.stil, self.geen_microfoon, self.valt_weg = set(weiger), stil, geen_microfoon, False
+        self.sterkte = sterkte          # amplitude van het nagebootste geluid (0..32767)
 
     def query_devices(self, device=None, kind=None):
         if self.geen_microfoon:

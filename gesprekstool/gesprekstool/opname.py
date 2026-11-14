@@ -4,6 +4,7 @@ Het bestand wordt tijdens het opnemen steeds geldig gehouden: valt de laptop uit
 dan is de opname tot dat moment nog bruikbaar.
 """
 import array
+import math
 import queue
 import struct
 import sys
@@ -14,6 +15,10 @@ from .kern import Fout
 
 DOEL_HZ = 16000        # wat de spraakherkenning verwacht
 BIJWERKEN_S = 5        # zo vaak wordt de WAV-kop bijgewerkt
+# Drempels voor de piek van de opname (0..1). Gemeten op een MacBook Air: gewone spraak
+# vlak bij de laptop piekt rond 0,02 tot 0,09. Een microfoon zonder toegang levert exact 0.
+GEEN_SIGNAAL = 0.0005  # daaronder komt er werkelijk niets binnen
+ZACHT = 0.01           # daaronder is het geluid zacht: waarschuwen, maar gewoon opnemen
 
 
 def _sounddevice():
@@ -46,6 +51,14 @@ def controleer_microfoon(apparaat=None, sd=None):
     return info.get("name", "microfoon")
 
 
+def balk_fractie(niveau):
+    """Uitslag van de geluidsbalk (0..1) op een decibelschaal van -54 tot -6 dB, zodat ook
+    zachte spraak duidelijk zichtbaar is."""
+    if niveau <= 0:
+        return 0.0
+    return min(1.0, max(0.0, (20 * math.log10(niveau) + 54.0) / 48.0))
+
+
 def wav_kop(hz, databytes):
     return struct.pack("<4sI4s4sIHHIIHH4sI", b"RIFF", 36 + databytes, b"WAVE", b"fmt ", 16,
                        1, 1, hz, hz * 2, 2, 16, b"data", databytes)
@@ -57,7 +70,7 @@ class Opname:
         self.apparaat = apparaat
         self.sd = sd or _sounddevice()
         self.hz = DOEL_HZ
-        self.niveau = 0.0            # 0..1, piek van het laatste blok
+        self.niveau = 0.0            # 0..1, recente piek (zakt geleidelijk terug)
         self.piek = 0.0              # hoogste niveau sinds de start
         self.fout = None             # melding als het apparaat wegvalt
         self.gepauzeerd = False
@@ -164,8 +177,12 @@ class Opname:
             if sys.byteorder == "big":
                 monsters.byteswap()
             if monsters:
-                self.niveau = max(max(monsters), -min(monsters)) / 32768.0
-                self.piek = max(self.piek, self.niveau)
+                blokpiek = max(max(monsters), -min(monsters)) / 32768.0
+                # Houd pieken even vast en laat ze zakken met 20 dB per 0,4 s: zo beweegt de
+                # balk mee met de spraak in plaats van met een toevallig stil moment.
+                afname = 0.1 ** (len(monsters) / float(self.hz) / 0.4)
+                self.niveau = max(blokpiek, self.niveau * afname)
+                self.piek = max(self.piek, blokpiek)
             if time.time() - laatst > BIJWERKEN_S:
                 self._werk_kop_bij()
                 laatst = time.time()

@@ -64,8 +64,10 @@ Snelheid, gemeten op een computer met 4 processorkernen en zonder videokaart
 Vuistregel zonder videokaart: het uitschrijven duurt ongeveer zo lang als het gesprek. Het
 verslag komt daar bij het kleine model enkele minuten bovenop; bij het grote model loopt
 dat voor een gesprek van een half uur naar schatting op tot twintig minuten of meer. Op
-een Mac met Apple Silicon rekent de grafische chip mee. Dat is naar verwachting veel
-sneller, maar niet gemeten. Meet de verwerkingstijd in de proef op de eigen laptops.
+een Mac met Apple Silicon rekent de grafische chip mee en gaat het veel sneller: op een
+MacBook Air (M5, 32 GB) met het grote model was een opname van 44 seconden in ongeveer
+19 seconden verwerkt, waarvan circa 2 seconden voor het uitschrijven. Oudere of lichtere
+Macs zijn niet gemeten. Meet de verwerkingstijd in de proef op de eigen laptops.
 
 Het grote model maakt nauwkeuriger verslagen dan het kleine. Een echt voorbeeld van beide
 staat in [docs/voorbeeld-echte-test.md](docs/voorbeeld-echte-test.md).
@@ -220,6 +222,7 @@ Een template met dezelfde naam als een meegeleverd template vervangt dat templat
 | *Niet klaar voor gebruik: ... model ontbreekt* | modellen staan niet in de map `models` (stap 3 of 4) |
 | *Microfoon: geen microfoon gevonden* | sluit een microfoon aan of geef toegang in de privacy-instellingen |
 | Balk beweegt niet tijdens de opname | verkeerde microfoon gekozen in het systeem, of geen toegang |
+| Balk slaat weinig uit, of melding *weinig geluid* | zet de laptop dichter bij de sprekers of verhoog het invoervolume van de microfoon in de geluidsinstellingen; de opname loopt gewoon door |
 | *Opslagmap ... synchroniseert* | de map staat in een cloud- of netwerkmap; pas `data_map` aan |
 | *Het taalmodel kon niet starten* | meestal te weinig werkgeheugen: gebruik het kleine model of sluit andere programma's |
 | Verwerken duurt erg lang | gebruik het kleine model; houd de laptop aan de netstroom |
@@ -300,8 +303,10 @@ download.
 **Eenmalig getest op een echte Mac:** op een MacBook Air (M5, 32 GB, macOS 27.2) is het
 pakket via de browser gedownload en met `mac-installeren.sh` geinstalleerd, met het grote
 taalmodel (12b). De controle gaf geen fouten, ook niet voor de netwerkblokkade, FileVault
-en Time Machine. Een proefopname met de microfoon leverde een bruikbaar verslag op. De
-verwerkingstijd is daarbij niet gemeten.
+en Time Machine. Een proefopname van 44 seconden met de microfoon leverde in ongeveer
+19 seconden een bruikbaar verslag op. Uit een schermopname van die test bleek dat de
+geluidsbalk bij gewone spraak te weinig uitsloeg; sinds versie 1.0.1 is de balk gevoeliger
+en wordt een zachte opname nooit meer als "geen geluid" afgekeurd.
 
 **Nog niet getest: doe dit in de proef op school.**
 

@@ -119,6 +119,21 @@ class Venster(unittest.TestCase):
         self.assertIn("geen geluid", self.meldingen.gemeld[-1][1])
         self.assertEqual(kern.lijst_gesprekken(), [])
 
+    def test_zachte_opname_wordt_bewaard_en_verwerkt(self):
+        """Gemeten op een echte Mac: spraak kan zacht binnenkomen. Dat is geen 'geen geluid'."""
+        self.sd.sterkte = 100                       # piek 0,003: zacht, maar wel een signaal
+        app = self.start()
+        self.neem_op()
+        self.assertEqual(app.w["hint"]["text"], "")
+        app.opname._bytes += 9 * app.opname.hz * 2  # doe alsof de opname al 9 seconden loopt
+        app._tik()
+        self.assertIn("weinig geluid", app.w["hint"]["text"])
+        self.assertIn("loopt gewoon door", app.w["hint"]["text"])
+        app.stop_opname()
+        self.assertEqual(app.scherm, "verwerk", self.meldingen.gemeld)
+        self.wacht(lambda: app.scherm == "verslag")
+        self.assertEqual(kern.lijst_gesprekken()[0][2], "klaar")
+
     def test_annuleren_bewaart_de_opname_en_later_afmaken_werkt(self):
         os.environ["NEP_TRAAG"] = "2"
         try:
