@@ -53,10 +53,22 @@ Niet geschikt: Chromebooks, iPads, telefoons, Intel-Macs, Windows op ARM en lapt
 | Windows, 16 GB, zonder losse videokaart | klein model (`4b`): het grote model werkt, maar is traag |
 | Windows, 8 GB | klein model (`4b`) |
 
-Snelheid, als indicatie (niet op schoolapparatuur gemeten): op een Mac met Apple Silicon is
-een gesprek van een half uur in enkele minuten verwerkt. Op een Windows-laptop zonder
-videokaart kan het verwerken ongeveer zo lang duren als het gesprek zelf. Meet dit in een
-proef op de eigen laptops voordat de tool breed wordt ingezet.
+Snelheid, gemeten op een computer met 4 processorkernen en zonder videokaart
+(vergelijkbaar met een eenvoudige Windows-laptop), voor een gesprek van 97 seconden:
+
+| Stap | Klein model (4b) | Groot model (12b) |
+| --- | --- | --- |
+| Uitschrijven | 105 s | 105 s (zelfde spraakmodel) |
+| Verslag schrijven | 79 s | 253 s |
+
+Vuistregel zonder videokaart: het uitschrijven duurt ongeveer zo lang als het gesprek. Het
+verslag komt daar bij het kleine model enkele minuten bovenop; bij het grote model loopt
+dat voor een gesprek van een half uur naar schatting op tot twintig minuten of meer. Op
+een Mac met Apple Silicon rekent de grafische chip mee. Dat is naar verwachting veel
+sneller, maar niet gemeten. Meet de verwerkingstijd in de proef op de eigen laptops.
+
+Het grote model maakt nauwkeuriger verslagen dan het kleine. Een echt voorbeeld van beide
+staat in [docs/voorbeeld-echte-test.md](docs/voorbeeld-echte-test.md).
 
 ## 3. Installeren
 
@@ -276,11 +288,22 @@ het verwerken, een wegvallende microfoon, lange gesprekken, en het wissen van ou
 De automatische tests gebruiken kleine testmodellen en een Engels fragment. Ze bewijzen
 dat de techniek werkt, niet hoe goed de verslagen zijn.
 
+**Eenmalig getest met de echte modellen en Nederlandse spraak:** een fictief oudergesprek,
+ingesproken met twee computerstemmen, is door de tool uitgeschreven en samengevat met het
+grote spraakmodel en met beide taalmodellen. Het transcript was vrijwel foutloos en beide
+verslagen waren feitelijk juist; het kleine model maakte enkele kleine fouten. Transcript,
+verslagen en gemeten tijden staan in
+[docs/voorbeeld-echte-test.md](docs/voorbeeld-echte-test.md). Daarbij zijn ook het bouwscript
+en `modellen-ophalen.sh` op Linux gebruikt, inclusief het hervatten van een afgebroken
+download.
+
 **Nog niet getest: doe dit in de proef op school.**
 
 1. Opnemen met een echte microfoon op een echte laptop, inclusief de toestemmingsvraag
    van macOS.
-2. De kwaliteit van Nederlandse transcripten en verslagen met de echte modellen.
+2. De kwaliteit bij echte gesprekken: meerdere mensen in een lokaal, door elkaar praten,
+   achtergrondgeluid, dialect en namen. De test hierboven gebruikte duidelijke
+   computerstemmen.
 3. De verwerkingstijd op de laptops van de school.
 4. Het gedrag onder de beveiliging van de school: Gatekeeper, SmartScreen, AppLocker of
    WDAC, en de virusscanner.

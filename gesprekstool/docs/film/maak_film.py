@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Maakt de instructiefilm van de gesprekstool (docs/instructiefilm.mp4).
 
-De film toont de echte schermen van de tool. De microfoon, de spraakherkenning en het
-taalmodel zijn nagebootst (zoals in de tests): het gesprek en het verslag in de film zijn
-een fictief voorbeeld.
+De film toont de echte schermen van de tool. Tijdens het opnemen van de film zijn de
+microfoon, de spraakherkenning en het taalmodel nagebootst (zoals in de tests). Het verslag
+dat in beeld komt is wel echt: het is door de tool gemaakt van een fictief, ingesproken
+oudergesprek (zie docs/voorbeeld-echte-test.md).
 
 Nodig: Linux met Xvfb, ffmpeg, Python met tkinter en Pillow, lettertype Inter.
 
@@ -48,33 +49,32 @@ VERSLAG = """VERSLAG OUDERGESPREK
 
 Datum: {datum}
 Leerling: Sam de Vries
-Aanwezig: moeder en vader van Sam, mentor
+Aanwezig: Niet besproken
 
 AANLEIDING EN DOEL VAN HET GESPREK
-Voortgangsgesprek na het eerste rapport. Ouders willen weten hoe het gaat met wiskunde en met het plannen van huiswerk.
+Voortgangsgesprek naar aanleiding van het eerste rapport.
 
 HOE GAAT HET MET DE LEERLING (THUIS EN OP SCHOOL)
-- Sam gaat met plezier naar school en heeft een vaste vriendengroep.
-- Thuis begint Sam vaak laat aan het huiswerk.
+Thuis gaat het wel prima. Sam gaat met plezier naar school en heeft leuke vrienden. Met het huiswerk gaat het niet zo lekker. Hij begint er vaak pas om negen uur 's avonds aan en dan is hij moe.
 
 LEERRESULTATEN EN WERKHOUDING
-- Nederlands en geschiedenis gaan goed.
-- Wiskunde is onvoldoende; Sam vraagt in de les weinig hulp.
+Sam doet goed mee bij Nederlands en geschiedenis, daar staat hij een ruime voldoende. Bij wiskunde gaat het minder, hij staat een 5,1. Hij vraagt in de les weinig hulp als hij iets niet snapt. Hij vindt wiskunde lastig en vindt de uitleg te snel gaan, maar durft dat niet te zeggen in de klas.
 
 WAT GAAT GOED
-- Sam is behulpzaam en werkt goed samen.
+Sam is behulpzaam en werkt prettig samen met klasgenoten.
 
 ZORGEN EN AANDACHTSPUNTEN
-- Plannen van huiswerk en toetsen.
-- Achterstand bij wiskunde.
+Het huiswerk wordt te laat begonnen, waardoor Sam moe is. Bij wiskunde gaat het minder en hij durft geen hulp te vragen.
 
 AFSPRAKEN (WAT, WIE, WANNEER)
-- Sam gebruikt een weekplanner en bespreekt die op maandag met de mentor (Sam en mentor, vanaf volgende week).
-- Sam gaat naar de steunles wiskunde (Sam, elke dinsdag).
-- Ouders kijken op zondag mee met de planning (ouders, wekelijks).
+- Sam gebruikt een weekplanner, die elke maandag in het mentoruur wordt besproken (vanaf volgende week).
+- Sam gaat naar de steunles wiskunde op dinsdag het zevende uur.
+- Thuis wordt op zondagavond samen met Sam de planning voor de week bekeken.
+- De telefoon gaat tijdens het huiswerk naar beneden.
+- Er volgt een vervolggesprek over zes weken.
 
 VERVOLG
-Vervolggesprek over zes weken.
+Een uitnodiging voor het vervolggesprek wordt verstuurd.
 """
 
 CONTROLE = [
@@ -522,7 +522,8 @@ def basis_demo(scene, zichtbaar):
         d.text((868, y), regel, font=letter("Bold", 36), fill=WIT)
         y += 46
     punten_tekenen(d, scene["punten"], 868, y + 26, 380, zichtbaar, letter("Medium", 23), 24)
-    d.text((868, 600), "Fictief voorbeeld", font=letter("Regular", 17), fill=ZACHT)
+    d.text((868, 588), "Fictief gesprek.", font=letter("Regular", 17), fill=ZACHT)
+    d.text((868, 612), "Het verslag is echt door de tool gemaakt.", font=letter("Regular", 17), fill=ZACHT)
     return beeld
 
 
@@ -617,7 +618,8 @@ def monteer(werk, uit):
 
 def schrijf_script(pad):
     regels = ["# Instructiefilm Gesprekstool: tekst van de voice-over", "",
-              "Het gesprek en het verslag in de film zijn een fictief voorbeeld.", ""]
+              "Het gesprek in de film is fictief. Het verslag in beeld is echt door de tool gemaakt "
+              "(zie voorbeeld-echte-test.md).", ""]
     for i, scene in enumerate(SCENES):
         regels += ["## Scene %d: %s" % (i + 1, scene["kop"]), "", scene["tekst"], ""]
     pad.write_text("\n".join(regels), "utf-8")

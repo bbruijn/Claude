@@ -1,6 +1,6 @@
 # Instructiefilm Gesprekstool: tekst van de voice-over
 
-Het gesprek en het verslag in de film zijn een fictief voorbeeld.
+Het gesprek in de film is fictief. Het verslag in beeld is echt door de tool gemaakt (zie voorbeeld-echte-test.md).
 
 ## Scene 1: Gesprekstool
 

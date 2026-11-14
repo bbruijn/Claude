@@ -7,6 +7,7 @@ en opname, transcript en verslag verlaten de laptop niet.
 - **Instructiefilm (3 minuten):** [docs/instructiefilm.mp4](docs/instructiefilm.mp4), voor
   schoolleiding en docenten. De tekst staat in
   [docs/instructiefilm-script.md](docs/instructiefilm-script.md).
+- **Voorbeeld van een echt verslag:** [docs/voorbeeld-echte-test.md](docs/voorbeeld-echte-test.md).
 - **Docenten:** lees *Zo werkt het* hieronder.
 - **ICT en schoolleiding:** lees [BEHEER.md](BEHEER.md) voor eisen, installatie en advies.
 
