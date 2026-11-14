@@ -21,8 +21,15 @@ while IFS=$'\t' read -r sleutel bestand url; do
     continue
   fi
   echo "Ophalen: $bestand"
-  curl -L --fail --progress-bar -C - -o "$DOEL/$bestand.deel" "$url" < /dev/null \
-    || { echo "Downloaden mislukt: $url" >&2; exit 1; }
+  gelukt=""
+  for poging in 1 2 3 4 5; do     # bij een verbroken verbinding: hervatten waar we waren
+    if curl -L --fail --progress-bar -C - -o "$DOEL/$bestand.deel" "$url" < /dev/null; then
+      gelukt=ja
+      break
+    fi
+    echo "Verbinding verbroken (poging $poging van 5); de download wordt hervat..."
+  done
+  [[ -n "$gelukt" ]] || { echo "Downloaden mislukt: $url" >&2; exit 1; }
   mv "$DOEL/$bestand.deel" "$DOEL/$bestand"
 done < <(grep -v '^#' "$HIER/modellen.tsv")
 

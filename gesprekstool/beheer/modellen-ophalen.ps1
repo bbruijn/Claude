@@ -25,8 +25,13 @@ foreach ($regel in $regels) {
     continue
   }
   Write-Host "Ophalen: $bestand"
-  & curl.exe -L --fail --progress-bar -C - -o "$pad.deel" $url
-  if ($LASTEXITCODE -ne 0) { throw "Downloaden mislukt: $url" }
+  $gelukt = $false
+  foreach ($poging in 1..5) {     # bij een verbroken verbinding: hervatten waar we waren
+    & curl.exe -L --fail --progress-bar -C - -o "$pad.deel" $url
+    if ($LASTEXITCODE -eq 0) { $gelukt = $true; break }
+    Write-Host "Verbinding verbroken (poging $poging van 5); de download wordt hervat..."
+  }
+  if (-not $gelukt) { throw "Downloaden mislukt: $url" }
   Move-Item -Force "$pad.deel" $pad
 }
 
