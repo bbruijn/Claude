@@ -365,6 +365,12 @@ en Time Machine. Een proefopname van 44 seconden met de microfoon leverde in ong
 geluidsbalk bij gewone spraak te weinig uitsloeg; sinds versie 1.0.1 is de balk gevoeliger
 en wordt een zachte opname nooit meer als "geen geluid" afgekeurd.
 
+Op dezelfde MacBook Air is daarna versie 1.1.0 geinstalleerd, met beide modellen al in
+`~/AI-modellen` en zonder modellen mee te geven aan het installatiescript. De controle en
+het logboek van een proefopname toonden beide modellen uit de gedeelde map. Nadat de oude
+kopieen in `/Library/Application Support/Gesprekstool/models` en `~/gesprekstool-modellen`
+waren verwijderd, gaf de controle hetzelfde resultaat.
+
 **Nog niet getest: doe dit in de proef op school.**
 
 1. Opnemen met een echte microfoon op een Windows-laptop, en op Macs met minder
