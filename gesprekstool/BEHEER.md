@@ -336,13 +336,16 @@ Dit maakt een nieuw `verslag.txt` in die map; het oude verslag wordt overschreve
 
 Het template *Teamvergadering* werkt, maar houd rekening met het volgende:
 
-1. **Geen sprekers.** De tool weet niet wie iets zegt. Wie een actiepunt oppakt, staat alleen
+1. **Gebruik het grote taalmodel (12b).** In een test liet het kleine model (4b) de kop
+   *Besluiten* weg en maakte het van een voorstel een besluit; het grote model deed het goed.
+   Zie [docs/voorbeeld-gespreksvormen.md](docs/voorbeeld-gespreksvormen.md).
+2. **Geen sprekers.** De tool weet niet wie iets zegt. Wie een actiepunt oppakt, staat alleen
    in het verslag als iemand dat met naam zegt. Lees actiepunten daarom altijd na.
-2. **Lange vergaderingen** van een uur of meer worden in delen verwerkt. Dat duurt langer en
+3. **Lange vergaderingen** van een uur of meer worden in delen verwerkt. Dat duurt langer en
    is met echte opnames nog niet getest.
-3. **Geluid.** Met veel mensen rond een tafel is een tafelmicrofoon nodig; de microfoon van
+4. **Geluid.** Met veel mensen rond een tafel is een tafelmicrofoon nodig; de microfoon van
    een laptop vangt verder weg zittende sprekers slecht op.
-4. **Toestemming en inhoud.** Iedereen moet instemmen met de opname. Spreek af waar
+5. **Toestemming en inhoud.** Iedereen moet instemmen met de opname. Spreek af waar
    vergaderverslagen terechtkomen, zeker als het over collega's of leerlingen gaat.
 
 ## 7. Problemen oplossen
