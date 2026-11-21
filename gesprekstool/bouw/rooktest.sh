@@ -120,7 +120,7 @@ installeer() {
 if [[ -n "$WINDOWS" ]]; then
   GEINSTALLEERD="$(pad "$PROGRAMFILES")/Gesprekstool/gesprekstool-cli.exe"
   GEDEELD="$(pad "$USERPROFILE")/AI-modellen"
-  OUD="$(pad "$PROGRAMDATA")/Gesprekstool/models"
+  OUD="$(pad "${ProgramData:-C:/ProgramData}")/Gesprekstool/models"   # in Git Bash heet dit ProgramData
 else
   GEINSTALLEERD="/Applications/Gesprekstool.app/Contents/MacOS/Gesprekstool"
   GEDEELD="$HOME/AI-modellen"
