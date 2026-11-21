@@ -1,3 +1,3 @@
 """Gesprekstool: gesprekken volledig offline opnemen, transcriberen en samenvatten."""
 
-VERSIE = "1.1.0"
+VERSIE = "1.2.0"

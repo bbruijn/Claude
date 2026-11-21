@@ -146,6 +146,59 @@ def templates():
     return dict(sorted(gevonden.items()))
 
 
+STANDAARD_VELD = "Naam leerling"
+TEMPLATE_SLEUTELS = ("instructie", "veld")
+
+
+def lees_template(pad):
+    """Leest een template. Geeft een dict met 'verslag', 'instructie', 'veld' en 'waarschuwing'.
+
+    Een template is een tekstbestand met de koppen van het verslag. Bovenaan mag een kop staan
+    met aanwijzingen, afgesloten met een regel '---':
+
+        instructie:
+        - Let vooral op besluiten en actiepunten.
+        veld: Team of onderwerp
+        ---
+        VERSLAG TEAMVERGADERING
+        ...
+
+    'instructie' gaat mee naar het taalmodel, 'veld' is het label van het naamveld op het
+    startscherm. Een bestand zonder die kop is in zijn geheel het verslag (zoals vroeger).
+    """
+    tekst = Path(pad).read_text("utf-8-sig")
+    uit = {"verslag": tekst, "instructie": "", "veld": STANDAARD_VELD, "waarschuwing": ""}
+    regels = tekst.splitlines()
+    eerste = next((r.strip() for r in regels if r.strip()), "")
+    if eerste.split(":", 1)[0].strip().lower() not in TEMPLATE_SLEUTELS or ":" not in eerste:
+        return uit
+    if "---" not in (r.strip() for r in regels):
+        uit["waarschuwing"] = "kop met 'instructie:' of 'veld:' zonder afsluitende regel '---'"
+        return uit
+    scheiding = [r.strip() for r in regels].index("---")
+    sleutel, instructie = None, []
+    for regel in regels[:scheiding]:
+        kaal = regel.strip()
+        naam, _, waarde = kaal.partition(":")
+        if naam.strip().lower() in TEMPLATE_SLEUTELS and _:
+            sleutel = naam.strip().lower()
+            if sleutel == "veld":
+                uit["veld"] = waarde.strip() or STANDAARD_VELD
+            elif waarde.strip():
+                instructie.append(waarde.strip())
+        elif sleutel == "instructie" and kaal:
+            instructie.append(kaal)
+    uit["instructie"] = "\n".join(instructie)
+    uit["verslag"] = "\n".join(regels[scheiding + 1:]).strip("\n") + "\n"
+    return uit
+
+
+def template_info(naam):
+    """Gegevens van het template met deze naam, of None als het niet bestaat."""
+    pad = templates().get(naam)
+    return lees_template(pad) if pad else None
+
+
 def gedeelde_map():
     """De map met modellen die meerdere apps delen (standaard ~/AI-modellen), of None."""
     waarde = CFG.get("gedeelde_modellen_map")
@@ -419,7 +472,7 @@ def ruim_audio_op():
 
 # ------------------------------------------------------------- verwerking
 
-SAMENVAT_PROMPT = """Je maakt gespreksverslagen voor een docent of mentor.
+SAMENVAT_PROMPT = """Je maakt verslagen van gesprekken op een school.
 Hieronder staat {bronsoort} van een gesprek ({soort}). De tekst is automatisch \
 getranscribeerd: er kunnen fouten in staan en sprekers zijn niet gelabeld.
 
@@ -433,7 +486,7 @@ streepje (-) voor opsommingen.
 - Negeer losse zinnen die duidelijk niet bij het gesprek horen, zoals ondertitel- of \
 omroepteksten.
 - Geef alleen het ingevulde template terug, zonder inleiding of toelichting.
-
+{aanwijzingen}
 === TEMPLATE ===
 {template}
 
@@ -445,10 +498,21 @@ NOTITIE_PROMPT = """Hieronder staat deel {i} van {n} van het transcript van een 
 ({soort}). Maak beknopte, feitelijke aantekeningen in het Nederlands: wat is besproken, \
 zorgen, wat goed gaat, afspraken (wie doet wat en wanneer). Gebruik alleen wat in de \
 tekst staat en verzin niets. Geef alleen de aantekeningen.
-
+{aanwijzingen}
 === TRANSCRIPT (deel {i}/{n}) ===
 {stuk}
 """
+
+
+AANWIJZINGEN = """
+Aanwijzingen voor dit soort gesprek. Ze zeggen waar je op let; de regels hierboven \
+gelden altijd en gaan voor.
+{instructie}
+"""
+
+
+def aanwijzingen(instructie):
+    return AANWIJZINGEN.format(instructie=instructie) if instructie.strip() else ""
 
 
 def splits(tekst, maximum):
@@ -633,19 +697,19 @@ class Verwerking:
         if not transcript:
             raise Fout("Het transcript is leeg.")
         soort = self.meta.get("template") or ""
-        pad = templates().get(soort)
-        if not pad:
+        info = template_info(soort)
+        if not info:
             raise Fout("Het template '%s' bestaat niet (meer)." % soort)
-        template = pad.read_text("utf-8-sig")
+        template, extra = info["verslag"], aanwijzingen(info["instructie"])
         for sleutel, waarde in (("{datum}", self.meta.get("datum", "")),
                                 ("{naam}", self.meta.get("naam") or "Onbekend")):
             template = template.replace(sleutel, waarde)
 
         context = context_tokens()
-        budget = (context - UITVOER_TOKENS - 600) * TEKENS_PER_TOKEN - len(template)
+        budget = (context - UITVOER_TOKENS - 600) * TEKENS_PER_TOKEN - len(template) - len(extra)
         if budget < 3000:
             raise Fout("Het contextvenster (%d) is te klein voor dit template." % context)
-        deel_budget = (context - NOTITIE_TOKENS - 400) * TEKENS_PER_TOKEN
+        deel_budget = (context - NOTITIE_TOKENS - 400) * TEKENS_PER_TOKEN - len(extra)
 
         self.status("Stap 2 van 2: taalmodel laden...")
         self.voortgang(None)
@@ -663,13 +727,14 @@ class Verwerking:
                     self.status("Stap 2 van 2: lang gesprek lezen (deel %d van %d)..." % (i, len(stukken)))
                     self.voortgang((i - 1) / float(len(stukken)))
                     notities.append("[Deel %d]\n%s" % (i, self._vraag(NOTITIE_PROMPT.format(
-                        i=i, n=len(stukken), soort=soort, stuk=stuk), NOTITIE_TOKENS)))
+                        i=i, n=len(stukken), soort=soort, stuk=stuk, aanwijzingen=extra),
+                        NOTITIE_TOKENS)))
                 bron, bronsoort, bronkop = "\n\n".join(notities), "aantekeningen", "AANTEKENINGEN"
             self.status("Stap 2 van 2: verslag schrijven...")
             self.voortgang(None)
             tekst = self._vraag(SAMENVAT_PROMPT.format(
-                bronsoort=bronsoort, bronkop=bronkop, soort=soort, template=template, bron=bron),
-                UITVOER_TOKENS, toon=True)
+                bronsoort=bronsoort, bronkop=bronkop, soort=soort, template=template, bron=bron,
+                aanwijzingen=extra), UITVOER_TOKENS, toon=True)
         finally:
             self._stop_llm()
         if not tekst:
@@ -746,6 +811,13 @@ def controle(sd=None, meld=None):
                                      "ontbreekt (gezocht in %s)" % " en ".join(verwacht)))
     namen = list(templates())
     regel(bool(namen), "Templates: %s" % (", ".join(namen) or "geen gevonden"))
+    for naam, pad in templates().items():
+        try:
+            fout = lees_template(pad)["waarschuwing"]
+        except (OSError, UnicodeDecodeError) as e:
+            fout = "kan niet worden gelezen (%s)" % e
+        if fout:
+            regel(False, "Template %s (%s): %s" % (naam, pad, fout), let_op=True)
 
     try:
         from . import opname

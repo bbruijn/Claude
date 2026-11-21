@@ -110,6 +110,31 @@ class Venster(unittest.TestCase):
         self.assertEqual(app.w["boom"].item(rij)["values"][2:], ["Sam de Vries", "Verslag klaar"])
         self.assertEqual(self.meldingen.gemeld, [])
 
+    def test_naamveld_volgt_het_gekozen_template(self):
+        app = self.start()
+        self.assertNotIn("keuzelijst", app.w)               # drie gespreksvormen: knoppen
+        self.assertEqual(app.w["veldlabel"]["text"], "Naam leerling (mag leeg blijven)")
+        app.w["soort"].set("teamvergadering")
+        self.assertEqual(app.w["veldlabel"]["text"], "Team of onderwerp (mag leeg blijven)")
+        self.assertEqual(app.w["boom"].heading("naam")["text"], "Naam")
+
+    def test_keuzelijst_bij_veel_gespreksvormen(self):
+        eigen = Path(self.env["GESPREKSTOOL_HOME"]) / "templates"
+        eigen.mkdir()
+        (eigen / "zorgoverleg.txt").write_text(
+            "instructie:\n- Zakelijk.\nveld: Naam leerling of dossier\n---\nVERSLAG ZORGOVERLEG\n{datum} {naam}\n", "utf-8")
+        app = self.start()
+        keuze = app.w["keuzelijst"]
+        self.assertEqual(list(keuze["values"]), ["Leerlinggesprek", "Oudergesprek", "Teamvergadering", "Zorgoverleg"])
+        keuze.current(3)
+        keuze.event_generate("<<ComboboxSelected>>")
+        self.app.update()
+        self.assertEqual(app.w["soort"].get(), "zorgoverleg")
+        self.assertEqual(app.w["veldlabel"]["text"], "Naam leerling of dossier (mag leeg blijven)")
+        self.neem_op("Casus 12")
+        self.assertEqual(app.meta["template"], "zorgoverleg")
+        app.gooi_opname_weg()
+
     def test_stille_opname_wordt_niet_bewaard(self):
         self.sd.stil = True
         app = self.start()

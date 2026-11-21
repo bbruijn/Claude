@@ -259,17 +259,94 @@ Voorbeeld voor de hele school:
 { "audio_bewaren_dagen": 7, "whisper_prompt": "mentor, Magister, dyslexie, havo, vwo" }
 ```
 
-## 6. Templates
+## 6. Templates en gespreksvormen
 
-Een template is een tekstbestand met de koppen van het verslag. `{datum}` en `{naam}`
-worden automatisch ingevuld. Elk `.txt`-bestand verschijnt als keuze in het startscherm.
+Elke gespreksvorm (oudergesprek, leerlinggesprek, teamvergadering) is een template: een
+tekstbestand dat op het startscherm als keuze verschijnt. De tool levert er drie mee.
 
-| Plek | Voor wie |
+### Waar templates staan
+
+| Plek | Mac | Windows | Voor wie |
+| --- | --- | --- | --- |
+| Meegeleverd | in de app | `C:\Program Files\Gesprekstool\templates` | standaard voor iedereen |
+| Hele computer | `/Library/Application Support/Gesprekstool/templates` | `C:\ProgramData\Gesprekstool\templates` | templates van de school, door ICT uitgerold |
+| Gebruiker | `~/Library/Application Support/Gesprekstool/templates` | `%LOCALAPPDATA%\Gesprekstool\templates` | eigen templates van een docent |
+
+Een template met dezelfde naam als een meegeleverd template vervangt dat template. De
+bestandsnaam bepaalt de naam op het startscherm: `zorgoverleg.txt` wordt *Zorgoverleg*.
+Bij meer dan drie gespreksvormen toont het startscherm een keuzelijst.
+
+Advies: laat een vaste eigenaar de schooltemplates beheren en via de map voor de hele
+computer uitrollen. Dan zien alle verslagen er hetzelfde uit. Een template-editor in de app
+is er bewust niet.
+
+### Hoe een template eruitziet
+
+```
+instructie:
+- Leg besluiten vast zoals ze zijn genomen. Is er over een punt alleen gesproken, schrijf dan "geen besluit".
+- Actiepunten: wat, wie en voor wanneer. Laat "wie" of "wanneer" weg als dat niet is gezegd.
+veld: Team of onderwerp
+---
+VERSLAG TEAMVERGADERING
+
+Datum: {datum}
+Team of onderwerp: {naam}
+
+BESLUITEN
+
+ACTIEPUNTEN (WAT, WIE, WANNEER)
+```
+
+| Onderdeel | Betekenis |
 | --- | --- |
-| `<systeemmap>/templates` (zie hoofdstuk 5) | templates van de school, voor alle gebruikers |
-| `<gebruikersmap>/templates` | eigen templates van een docent |
+| `instructie:` | aanwijzingen voor het taalmodel: waar het bij dit soort gesprek op moet letten. Komt niet in het verslag. |
+| `veld:` | het label van het naamveld op het startscherm, bijvoorbeeld *Naam leerling* of *Team of onderwerp*. Standaard *Naam leerling*. |
+| `---` | sluit de kop af. Alles daaronder is het verslag. |
+| `{datum}`, `{naam}` | worden ingevuld met de datum en wat er in het naamveld staat. |
 
-Een template met dezelfde naam als een meegeleverd template vervangt dat template.
+De kop is niet verplicht: een bestand met alleen koppen werkt zoals voorheen. Een kop zonder
+afsluitende regel `---` meldt de **Controle** als *Let op*.
+
+De vaste regels voor het taalmodel staan in de app en gelden altijd: niets verzinnen,
+*Niet besproken* bij onderwerpen die niet aan bod kwamen, zakelijk Nederlands, geen opmaak.
+Een instructie kan die regels niet uitzetten; ze bepaalt alleen waar het model op let.
+
+### Tips voor een goede instructie
+
+- Houd het kort: drie tot zes punten. Een klein model volgt een korte, gerichte opdracht beter.
+- Schrijf wat belangrijk is in dit soort gesprek, niet hoe het model moet schrijven.
+- Vraag niet om toe te schrijven wie iets zei: de tool weet niet wie er spreekt.
+
+### Een nieuw template testen
+
+Test een nieuw template eerst op een opname waar je het antwoord van kent, voordat je het
+uitrolt. De tool kan een bestaand gesprek opnieuw samenvatten met een ander template:
+
+```bash
+/Applications/Gesprekstool.app/Contents/MacOS/Gesprekstool --samenvat ~/GesprekkenLokaal/<map-van-een-gesprek> --template <naam>
+```
+```powershell
+& "C:\Program Files\Gesprekstool\gesprekstool-cli.exe" --samenvat <map-van-een-gesprek> --template <naam>
+```
+
+Dit maakt een nieuw `verslag.txt` in die map; het oude verslag wordt overschreven.
+
+### Beperkingen bij teamvergaderingen
+
+Het template *Teamvergadering* werkt, maar houd rekening met het volgende:
+
+1. **Gebruik het grote taalmodel (12b).** In een test liet het kleine model (4b) de kop
+   *Besluiten* weg en maakte het van een voorstel een besluit; het grote model deed het goed.
+   Zie [docs/voorbeeld-gespreksvormen.md](docs/voorbeeld-gespreksvormen.md).
+2. **Geen sprekers.** De tool weet niet wie iets zegt. Wie een actiepunt oppakt, staat alleen
+   in het verslag als iemand dat met naam zegt. Lees actiepunten daarom altijd na.
+3. **Lange vergaderingen** van een uur of meer worden in delen verwerkt. Dat duurt langer en
+   is met echte opnames nog niet getest.
+4. **Geluid.** Met veel mensen rond een tafel is een tafelmicrofoon nodig; de microfoon van
+   een laptop vangt verder weg zittende sprekers slecht op.
+5. **Toestemming en inhoud.** Iedereen moet instemmen met de opname. Spreek af waar
+   vergaderverslagen terechtkomen, zeker als het over collega's of leerlingen gaat.
 
 ## 7. Problemen oplossen
 

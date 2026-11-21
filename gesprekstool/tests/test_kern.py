@@ -93,7 +93,7 @@ class Keten(unittest.TestCase):
         r = self.draai("--controle")
         self.assertRegex(r.stdout, r"Spraakmodel: \S*ggml-nep\.bin \(eigen map\)")
         self.assertRegex(r.stdout, r"Taalmodel: \S*nep\.gguf \(eigen map\)")
-        self.assertIn("Templates: leerlinggesprek, oudergesprek", r.stdout)
+        self.assertIn("Templates: leerlinggesprek, oudergesprek, teamvergadering", r.stdout)
         self.assertIn("(alleen op deze computer)", r.stdout)
         (Path(self.env["GESPREKSTOOL_APP"]) / "bin" / "llama" / "llama-server").unlink()
         r = self.draai("--controle", PATH="/nergens")
@@ -125,6 +125,51 @@ class Keten(unittest.TestCase):
         self.assertIn(verwacht, logboek)                        # en vastgelegd in het logboek
         self.assertRegex(logboek, r"Taalmodel geladen uit: \S*gedeeld\S*gemma-3-\d+b-it-Q4_K_M\.gguf \(gedeelde map\)")
         self.assertIn("-m %s" % (gedeeld / "whisper" / "ggml-large-v3-turbo.bin"), logboek)
+
+
+    def test_aanwijzingen_van_het_template_gaan_mee_naar_het_taalmodel(self):
+        r = self.draai("--verwerk", str(self.wav), "--template", "teamvergadering", "--naam", "Bovenbouw")
+        self.assertEqual(r.returncode, 0, r.stderr + r.stdout)
+        prompt, = nep.prompts(self.env)
+        self.assertIn("Aanwijzingen voor dit soort gesprek", prompt)
+        self.assertIn("de regels hierboven gelden altijd en gaan voor", prompt)
+        self.assertIn('schrijf dan "geen besluit"', prompt)
+        self.assertIn("VERSLAG TEAMVERGADERING", prompt)
+        self.assertIn("Team of onderwerp: Bovenbouw", prompt)
+        # De kop van het templatebestand hoort niet in het verslag.
+        template = prompt.split("=== TEMPLATE ===")[1].split("=== TRANSCRIPT ===")[0]
+        self.assertNotIn("instructie:", template)
+        self.assertNotIn("veld:", template)
+        self.assertNotIn("---", template)
+        # De vaste regels staan er nog steeds, voor de aanwijzingen.
+        self.assertLess(prompt.index("Verzin niets"), prompt.index("Aanwijzingen voor dit soort gesprek"))
+
+    def test_template_zonder_kop_werkt_zoals_vroeger(self):
+        eigen = Path(self.env["GESPREKSTOOL_HOME"]) / "templates"
+        eigen.mkdir()
+        (eigen / "intake.txt").write_text("VERSLAG INTAKE\n\nDatum: {datum}\nNaam: {naam}\n\nAFSPRAKEN\n", "utf-8")
+        r = self.draai("--verwerk", str(self.wav), "--template", "intake", "--naam", "Noor")
+        self.assertEqual(r.returncode, 0, r.stderr + r.stdout)
+        prompt, = nep.prompts(self.env)
+        self.assertNotIn("Aanwijzingen voor dit soort gesprek", prompt)
+        self.assertIn("VERSLAG INTAKE\n\nDatum: ", prompt)
+        self.assertIn("Naam: Noor", prompt)
+
+    def test_aanwijzingen_ook_bij_lange_gesprekken(self):
+        nep.schrijf_config(self.env, context_tokens=4096)
+        r = self.draai("--verwerk", str(self.wav), "--template", "teamvergadering", NEP_REGELS=500)
+        self.assertEqual(r.returncode, 0, r.stderr + r.stdout)
+        prompts = nep.prompts(self.env)
+        self.assertGreater(len(prompts), 2)
+        self.assertTrue(all("Aanwijzingen voor dit soort gesprek" in p for p in prompts))
+        self.assertTrue(all(len(p) / 3 < 4096 for p in prompts), "prompt past niet in de context")
+
+    def test_controle_waarschuwt_voor_een_kapot_template(self):
+        eigen = Path(self.env["GESPREKSTOOL_HOME"]) / "templates"
+        eigen.mkdir()
+        (eigen / "kapot.txt").write_text("instructie:\n- iets\nVERSLAG\n", "utf-8")
+        r = self.draai("--controle")
+        self.assertRegex(r.stdout, r"LET OP.*Template kapot .*zonder afsluitende regel '---'")
 
 
 def kern_status(map_):
@@ -192,7 +237,7 @@ class Opslag(unittest.TestCase):
         (eigen / "oudergesprek.txt").write_text("EIGEN", "utf-8")
         (eigen / "zorgoverleg.txt").write_text("ZORG", "utf-8")
         gevonden = kern.templates()
-        self.assertEqual(list(gevonden), ["leerlinggesprek", "oudergesprek", "zorgoverleg"])
+        self.assertEqual(list(gevonden), ["leerlinggesprek", "oudergesprek", "teamvergadering", "zorgoverleg"])
         self.assertEqual(gevonden["oudergesprek"].read_text("utf-8"), "EIGEN")
 
     def test_opmaak_schoonmaken_en_splitsen(self):
@@ -201,6 +246,55 @@ class Opslag(unittest.TestCase):
         stukken = kern.splits("\n".join("regel %d" % i for i in range(100)) + "\n" + "x" * 250, 100)
         self.assertTrue(all(len(s) <= 100 for s in stukken))
         self.assertEqual("".join(stukken).count("x"), 250)
+
+
+class Templates(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.map = Path(self.tmp.name)
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def lees(self, tekst):
+        pad = self.map / "t.txt"
+        pad.write_text(tekst, "utf-8")
+        return kern.lees_template(pad)
+
+    def test_zonder_kop(self):
+        t = self.lees("VERSLAG\n\nDatum: {datum}\n")
+        self.assertEqual(t, {"verslag": "VERSLAG\n\nDatum: {datum}\n", "instructie": "",
+                             "veld": "Naam leerling", "waarschuwing": ""})
+
+    def test_met_kop(self):
+        t = self.lees("instructie:\n- Let op besluiten.\n- Geen namen.\n\nveld: Team\n---\nVERSLAG\nDatum: {datum}\n")
+        self.assertEqual(t["instructie"], "- Let op besluiten.\n- Geen namen.")
+        self.assertEqual(t["veld"], "Team")
+        self.assertEqual(t["verslag"], "VERSLAG\nDatum: {datum}\n")
+        self.assertEqual(t["waarschuwing"], "")
+
+    def test_instructie_op_dezelfde_regel_en_alleen_veld(self):
+        self.assertEqual(self.lees("instructie: Kort houden.\n---\nV\n")["instructie"], "Kort houden.")
+        t = self.lees("veld: Klas\n---\nV\n")
+        self.assertEqual((t["veld"], t["instructie"], t["verslag"]), ("Klas", "", "V\n"))
+
+    def test_streepjes_in_een_gewoon_template_zijn_geen_kop(self):
+        tekst = "VERSLAG\n---\nAFSPRAKEN\n"
+        self.assertEqual(self.lees(tekst)["verslag"], tekst)
+
+    def test_kop_zonder_afsluiting_geeft_waarschuwing(self):
+        t = self.lees("instructie:\n- iets\nVERSLAG\n")
+        self.assertIn("zonder afsluitende regel '---'", t["waarschuwing"])
+        self.assertEqual(t["instructie"], "")
+
+    def test_meegeleverde_templates_zijn_compleet(self):
+        for pad in sorted((nep.ROOT / "templates").glob("*.txt")):
+            t = kern.lees_template(pad)
+            self.assertEqual(t["waarschuwing"], "", pad.name)
+            self.assertTrue(t["instructie"].startswith("- "), pad.name)
+            self.assertNotEqual(t["veld"], "", pad.name)
+            self.assertIn("{datum}", t["verslag"], pad.name)
+            self.assertIn("{naam}", t["verslag"], pad.name)
 
 
 class ModelZoeken(unittest.TestCase):
