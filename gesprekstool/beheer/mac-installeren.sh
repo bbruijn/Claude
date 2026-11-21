@@ -90,12 +90,19 @@ plaats() {  # plaats <bronbestand>
   else
     doel="$GEDEELD/$soort"
     echo "   $naam: naar $doel"
-    mkdir -p "$doel"
+    # Afspraak van de gedeelde map: niets veranderen van een ander. Eigenaar en rechten
+    # worden daarom alleen gezet op mappen en bestanden die dit script zelf aanmaakt.
+    for map in "$GEDEELD" "$doel"; do
+      if [[ ! -d "$map" ]]; then
+        mkdir "$map"
+        chown "$GEBRUIKER" "$map" 2>/dev/null || true
+        chmod 755 "$map"
+      fi
+    done
     cp "$bestand" "$doel/$naam.deel"
     mv "$doel/$naam.deel" "$doel/$naam"
-    chown "$GEBRUIKER" "$GEDEELD" "$doel" "$doel/$naam" 2>/dev/null || true
-    chmod a+rX "$GEDEELD" "$doel"
-    chmod a+r "$doel/$naam"
+    chown "$GEBRUIKER" "$doel/$naam" 2>/dev/null || true
+    chmod 644 "$doel/$naam"
   fi
 }
 if [[ -n "$BRONMAP" ]]; then
