@@ -1,3 +1,9 @@
+instructie:
+- Noteer afspraken zo concreet mogelijk: wat, wie en wanneer, maar alleen als dat in het gesprek is gezegd.
+- Benoem zorgen zakelijk en zonder oordeel.
+- Schrijf bij "Aanwezig" alleen wie in het gesprek met naam of rol genoemd wordt.
+veld: Naam leerling
+---
 VERSLAG OUDERGESPREK
 
 Datum: {datum}

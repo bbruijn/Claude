@@ -1,3 +1,9 @@
+instructie:
+- Beschrijf hoe de leerling het zelf ziet; gebruik waar het kan de woorden van de leerling.
+- Noteer doelen en afspraken concreet: wat, wie en wanneer, maar alleen als dat in het gesprek is gezegd.
+- Schrijf respectvol en zonder oordeel over de leerling.
+veld: Naam leerling
+---
 VERSLAG LEERLINGGESPREK
 
 Datum: {datum}

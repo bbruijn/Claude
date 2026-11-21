@@ -1,0 +1,20 @@
+instructie:
+- Leg besluiten vast zoals ze zijn genomen. Is er over een punt alleen gesproken, schrijf dan "geen besluit".
+- Actiepunten: wat, wie en voor wanneer. Laat "wie" of "wanneer" weg als dat niet is gezegd.
+- Sprekers zijn niet bekend: schrijf niet toe wie iets zei, tenzij een naam in de tekst wordt genoemd.
+- Neem geen persoonlijke omstandigheden van collega's of leerlingen op.
+veld: Team of onderwerp
+---
+VERSLAG TEAMVERGADERING
+
+Datum: {datum}
+Team of onderwerp: {naam}
+Aanwezig:
+
+BESPROKEN PUNTEN
+
+BESLUITEN
+
+ACTIEPUNTEN (WAT, WIE, WANNEER)
+
+OPEN PUNTEN VOOR EEN VOLGENDE VERGADERING

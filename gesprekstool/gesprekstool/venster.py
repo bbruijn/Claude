@@ -21,6 +21,9 @@ TEKENS = {"ok": "✓", "let_op": "!", "fout": "✗"}
 KLEUREN = {"ok": GROEN, "let_op": ORANJE, "fout": ROOD}
 
 
+MAX_KEUZEKNOPPEN = 3   # bij meer gespreksvormen toont het startscherm een keuzelijst
+
+
 def mooie_naam(template):
     return template.replace("_", " ").replace("-", " ").capitalize()
 
@@ -99,6 +102,10 @@ class App(tk.Tk):
         s.map("TRadiobutton", background=[("active", KAART)])
         s.map("TCheckbutton", background=[("active", KAART)])
         s.configure("TEntry", padding=6)
+        s.configure("TCombobox", padding=6)
+        s.map("TCombobox", fieldbackground=[("readonly", "white")],
+              selectbackground=[("readonly", "white")], selectforeground=[("readonly", TEKST)])
+        self.option_add("*TCombobox*Listbox.font", self.f["norm"])
         s.configure("Treeview", rowheight=30, background=KAART, fieldbackground=KAART,
                     bordercolor=RAND)
         s.configure("Treeview.Heading", font=(familie, 11, "bold"), padding=(6, 6))
@@ -128,18 +135,37 @@ class App(tk.Tk):
     # -------------------------------------------------------- startscherm
     def toon_start(self):
         self._wissel("start")
-        namen = list(kern.templates())
+        alle = kern.templates()
+        namen = list(alle)
+        self.w["velden"] = {}
+        for naam, pad in alle.items():
+            try:
+                self.w["velden"][naam] = kern.lees_template(pad)["veld"]
+            except (OSError, UnicodeDecodeError):
+                self.w["velden"][naam] = kern.STANDAARD_VELD
         kaart = self._kaart("Nieuw gesprek")
 
         self._label(kaart, "Soort gesprek", ZACHT).pack(anchor="w", pady=(12, 2))
         self.w["soort"] = tk.StringVar(value=namen[0] if namen else "")
-        rij = tk.Frame(kaart, bg=KAART)
-        rij.pack(anchor="w")
-        for naam in namen:
-            ttk.Radiobutton(rij, text=mooie_naam(naam), value=naam,
-                            variable=self.w["soort"]).pack(side="left", padx=(0, 18))
+        if len(namen) <= MAX_KEUZEKNOPPEN:
+            rij = tk.Frame(kaart, bg=KAART)
+            rij.pack(anchor="w")
+            for naam in namen:
+                ttk.Radiobutton(rij, text=mooie_naam(naam), value=naam,
+                                variable=self.w["soort"]).pack(side="left", padx=(0, 18))
+        else:   # veel gespreksvormen: een keuzelijst past beter dan een rij knoppen
+            keuze = ttk.Combobox(kaart, values=[mooie_naam(n) for n in namen], state="readonly",
+                                 width=38, font=self.f["norm"])
+            keuze.current(0)
+            keuze.bind("<<ComboboxSelected>>",
+                       lambda _e: self.w["soort"].set(namen[keuze.current()]))
+            keuze.pack(anchor="w")
+            self.w["keuzelijst"] = keuze
 
-        self._label(kaart, "Naam leerling (mag leeg blijven)", ZACHT).pack(anchor="w", pady=(12, 2))
+        self.w["veldlabel"] = self._label(kaart, "", ZACHT)
+        self.w["veldlabel"].pack(anchor="w", pady=(12, 2))
+        self.w["soort"].trace_add("write", lambda *_a: self._werk_veld_bij())
+        self._werk_veld_bij()
         self.w["naam"] = tk.StringVar()
         ttk.Entry(kaart, textvariable=self.w["naam"], width=40, font=self.f["norm"]).pack(anchor="w")
 
@@ -163,7 +189,7 @@ class App(tk.Tk):
         boom = ttk.Treeview(kader, columns=("datum", "soort", "naam", "status"), show="headings",
                             height=5, selectmode="browse")
         for kolom, titel, breedte in (("datum", "Datum", 150), ("soort", "Soort gesprek", 180),
-                                      ("naam", "Leerling", 220), ("status", "Status", 170)):
+                                      ("naam", "Naam", 220), ("status", "Status", 170)):
             boom.heading(kolom, text=titel, anchor="w")
             boom.column(kolom, width=breedte, anchor="w")
         schuif = ttk.Scrollbar(kader, orient="vertical", command=boom.yview)
@@ -182,6 +208,13 @@ class App(tk.Tk):
                                                  meta["naam"] or "-", STATUS_TEKST[status]))
             self.w["mappen"][iid] = map_
         self._werk_start_bij()
+
+    def _werk_veld_bij(self):
+        """Het label van het naamveld hoort bij het gekozen template (bijv. 'Team of onderwerp')."""
+        if self.scherm != "start" or "veldlabel" not in self.w:
+            return
+        veld = self.w["velden"].get(self.w["soort"].get(), kern.STANDAARD_VELD)
+        self.w["veldlabel"].configure(text="%s (mag leeg blijven)" % veld)
 
     def _werk_start_bij(self):
         if self.scherm != "start":

@@ -16,7 +16,8 @@ en opname, transcript en verslag verlaten de laptop niet.
 ![Startscherm](docs/scherm-start.png)
 
 1. Open **Gesprekstool**.
-2. Kies het soort gesprek en vul eventueel de naam van de leerling in.
+2. Kies het soort gesprek (oudergesprek, leerlinggesprek of teamvergadering) en vul eventueel
+   de naam van de leerling of het onderwerp in.
 3. Vertel de aanwezigen dat het gesprek wordt opgenomen en vink dat aan.
 4. Klik op **Start opname**. Leg de laptop tussen de sprekers in.
 5. Klik na het gesprek op **Stop en maak verslag**.
@@ -34,6 +35,8 @@ en opname, transcript en verslag verlaten de laptop niet.
 - **Opname weggooien** verwijdert de opname direct en definitief.
 - **Gaat er iets mis** bij het maken van het verslag, dan blijft de opname bewaard. Kies het
   gesprek onder *Eerdere gesprekken* en klik op **Openen** om het opnieuw te proberen.
+- **Teamvergadering:** de tool weet niet wie er spreekt. Controleer bij actiepunten altijd
+  wie wat oppakt.
 - **Lees het verslag altijd na.** De computer kan woorden verkeerd verstaan en weet niet
   wie wat zei.
 - **Opnames worden automatisch gewist** 14 dagen nadat het verslag is gemaakt (de school
