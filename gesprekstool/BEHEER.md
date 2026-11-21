@@ -83,32 +83,55 @@ staat in [docs/voorbeeld-echte-test.md](docs/voorbeeld-echte-test.md).
 
 ### Stap 2: modellen ophalen (eenmalig, met internet)
 
-Mac:
+De modellen horen in een **gedeelde map** die ook andere apps op de laptop kunnen gebruiken:
+`~/AI-modellen` (Windows: `%USERPROFILE%\AI-modellen`), met een submap per soort model:
+
+```
+AI-modellen/
+  whisper/ggml-large-v3-turbo.bin
+  llm/gemma-3-12b-it-Q4_K_M.gguf      (of gemma-3-4b-it-Q4_K_M.gguf)
+```
+
+Een model dat daar al staat, wordt niet opnieuw opgehaald.
+
+Mac, rechtstreeks in de gedeelde map:
 
 ```bash
 cd Gesprekstool-macos-arm64/beheer
-./modellen-ophalen.sh ~/gesprekstool-modellen 12b      # of 4b
+./modellen-ophalen.sh 12b      # of 4b
 ```
 
-Windows (PowerShell):
+Windows (PowerShell), rechtstreeks in de gedeelde map:
 
 ```powershell
 cd Gesprekstool-windows-x64\beheer
-powershell -ExecutionPolicy Bypass -File modellen-ophalen.ps1 -Doel D:\gesprekstool-modellen -Llm 4b
+powershell -ExecutionPolicy Bypass -File modellen-ophalen.ps1 -Llm 4b
 ```
 
-Bewaar de map met modellen (bijvoorbeeld op een USB-stick): dezelfde map is bruikbaar
-voor alle laptops. Zet per laptop maar een taalmodel (`.gguf`) neer.
+Voor veel laptops kun je de modellen ook een keer in een losse map zetten, bijvoorbeeld op
+een USB-stick, en die bij elke installatie meegeven:
+
+```bash
+./modellen-ophalen.sh /Volumes/USB/modellen 12b
+```
+```powershell
+powershell -ExecutionPolicy Bypass -File modellen-ophalen.ps1 -Doel D:\modellen -Llm 4b
+```
 
 ### Stap 3: installeren op een Mac
 
 ```bash
 cd Gesprekstool-macos-arm64/beheer
-sudo ./mac-installeren.sh ~/gesprekstool-modellen
+sudo ./mac-installeren.sh                          # modellen staan al in ~/AI-modellen
+sudo ./mac-installeren.sh /Volumes/USB/modellen    # of: modellen meegeven
 ```
 
-Dit zet de app in `/Applications` en de modellen in
-`/Library/Application Support/Gesprekstool/models`, en eindigt met een controle.
+Dit zet de app in `/Applications` en eindigt met een controle. Voor elk meegegeven model:
+
+- staat het al in de gedeelde map, of op de oude plek
+  `/Library/Application Support/Gesprekstool/models`: er wordt niets gekopieerd;
+- staat het nog nergens: het komt in de gedeelde map van de gebruiker die `sudo` startte;
+- heeft het een andere naam dan de standaardmodellen: het gaat naar de oude plek.
 
 ### Stap 4: installeren op Windows
 
@@ -116,12 +139,43 @@ Start PowerShell als administrator:
 
 ```powershell
 cd Gesprekstool-windows-x64\beheer
-powershell -ExecutionPolicy Bypass -File windows-installeren.ps1 -Modellen D:\gesprekstool-modellen
+powershell -ExecutionPolicy Bypass -File windows-installeren.ps1 -Modellen D:\modellen
 ```
 
-Dit zet het programma in `C:\Program Files\Gesprekstool`, de modellen in
-`C:\ProgramData\Gesprekstool\models`, maakt de firewallregel *Gesprekstool netwerkblokkade*
-en een snelkoppeling in het startmenu, en eindigt met een controle.
+Dit zet het programma in `C:\Program Files\Gesprekstool`, maakt de firewallregel
+*Gesprekstool netwerkblokkade* en een snelkoppeling in het startmenu, en eindigt met een
+controle. Modellen worden op dezelfde manier behandeld als op de Mac; de oude plek is
+`C:\ProgramData\Gesprekstool\models`.
+
+### Laptops met meerdere gebruikers
+
+`~/AI-modellen` hoort bij een gebruiker. Op een laptop waar meerdere docenten met een eigen
+account werken, kies je een map die voor iedereen leesbaar is en geef je die mee:
+
+```bash
+sudo ./mac-installeren.sh /Volumes/USB/modellen --gedeelde-map /Users/Shared/AI-modellen
+```
+```powershell
+powershell -ExecutionPolicy Bypass -File windows-installeren.ps1 -Modellen D:\modellen -GedeeldeMap C:\Users\Public\AI-modellen
+```
+
+Het installatiescript legt die map vast in de instellingen voor de hele computer (hoofdstuk 5).
+
+### Waar de app de modellen zoekt
+
+Voor elk model, in deze volgorde:
+
+1. Een vast pad uit de instellingen (`whisper_model`, `llm_model`), als dat is ingevuld.
+2. De gedeelde map (`gedeelde_modellen_map`, standaard `~/AI-modellen`). De app leest daar
+   alleen de standaardnamen uit `beheer/modellen.tsv`; modellen van andere apps laat hij
+   staan. Met minder dan 16 GB werkgeheugen gaat het kleine taalmodel voor het grote.
+3. De eigen mappen van eerdere installaties: `~/Library/Application Support/Gesprekstool/models`
+   en `/Library/Application Support/Gesprekstool/models` (Windows:
+   `%LOCALAPPDATA%\Gesprekstool\models` en `C:\ProgramData\Gesprekstool\models`).
+
+Bestaande installaties blijven zo zonder ingreep werken. Welk bestand de app gebruikt, staat
+bij **Controle** (met *gedeelde map* of *eigen map* erachter) en in `verwerking.log` van elk
+gesprek.
 
 ### Stap 5: controleren met de docent
 
@@ -196,6 +250,8 @@ Instellingen staan in `config.json`. De tool leest ze in deze volgorde; latere w
 | `context_tokens` | `0` | hoeveel tekst het taalmodel tegelijk leest; `0` = automatisch |
 | `microfoon` | `null` | nummer of naam van een andere microfoon dan de standaardmicrofoon |
 | `netwerkblokkade` | `true` | Mac: sandbox zonder netwerk. Laat dit aan staan. |
+| `gedeelde_modellen_map` | `~/AI-modellen` | map met modellen die meerdere apps delen (submappen `whisper` en `llm`); leeg = niet gebruiken |
+| `whisper_model`, `llm_model` | leeg | vast pad naar een modelbestand; gaat voor op de gedeelde map |
 
 Voorbeeld voor de hele school:
 
@@ -219,7 +275,8 @@ Een template met dezelfde naam als een meegeleverd template vervangt dat templat
 
 | Melding of gedrag | Oplossing |
 | --- | --- |
-| *Niet klaar voor gebruik: ... model ontbreekt* | modellen staan niet in de map `models` (stap 3 of 4) |
+| *Niet klaar voor gebruik: ... model ontbreekt* | de melding noemt de mappen waarin gezocht is; zet de modellen in de gedeelde map (stap 2) |
+| Controle toont *eigen map* in plaats van *gedeelde map* | het model staat niet onder de standaardnaam in de submap `whisper` of `llm` van de gedeelde map |
 | *Microfoon: geen microfoon gevonden* | sluit een microfoon aan of geef toegang in de privacy-instellingen |
 | Balk beweegt niet tijdens de opname | verkeerde microfoon gekozen in het systeem, of geen toegang |
 | Balk slaat weinig uit, of melding *weinig geluid* | zet de laptop dichter bij de sprekers of verhoog het invoervolume van de microfoon in de geluidsinstellingen; de opname loopt gewoon door |

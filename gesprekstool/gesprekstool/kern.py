@@ -34,7 +34,8 @@ STANDAARD = {
     "gpu": True,                   # False = alleen processor gebruiken
     "audio_bewaren_dagen": 14,     # opname wissen N dagen na het verslag (0 = nooit wissen)
     "toestemming_vragen": True,    # vinkje "ik heb gemeld dat dit gesprek wordt opgenomen"
-    "whisper_model": "",           # leeg = automatisch zoeken in de modelmappen
+    "gedeelde_modellen_map": "~/AI-modellen",  # map die meerdere apps delen; leeg = niet gebruiken
+    "whisper_model": "",           # vast pad naar een modelbestand; leeg = automatisch zoeken
     "llm_model": "",
     "whisper_prompt": "",          # namen en vaktermen die vaak verkeerd verstaan worden
 }
@@ -51,6 +52,15 @@ SB_ALLEEN_LOOPBACK = (
     + '(allow network-outbound (remote ip "localhost:*"))'
 )
 FIREWALL_REGEL = "Gesprekstool netwerkblokkade"    # zelfde naam als in beheer/windows-installeren.ps1
+
+# De modellen die de Gesprekstool in de gedeelde map herkent, per submap, in volgorde van
+# voorkeur. Dit zijn dezelfde bestandsnamen als in beheer/modellen.tsv (een test bewaakt dat).
+# Andere bestanden in de gedeelde map horen bij andere apps en worden genegeerd.
+GEDEELDE_MODELLEN = {
+    "whisper": ["ggml-large-v3-turbo.bin"],
+    "llm": ["gemma-3-12b-it-Q4_K_M.gguf", "gemma-3-4b-it-Q4_K_M.gguf"],
+}
+BRON_GEDEELD, BRON_EIGEN = "gedeelde map", "eigen map"
 
 UITVOER_TOKENS = 2000      # ruimte voor het verslag
 NOTITIE_TOKENS = 800       # ruimte per deel bij lange gesprekken
@@ -136,29 +146,57 @@ def templates():
     return dict(sorted(gevonden.items()))
 
 
-def model_mappen():
-    mappen = []
-    if os.environ.get("GESPREKSTOOL_MODELLEN"):
-        mappen.append(Path(os.environ["GESPREKSTOOL_MODELLEN"]))
-    mappen += [gebruikers_map() / "models", systeem_map() / "models", app_map() / "models"]
+def gedeelde_map():
+    """De map met modellen die meerdere apps delen (standaard ~/AI-modellen), of None."""
+    waarde = CFG.get("gedeelde_modellen_map")
+    if not waarde:
+        return None
+    return Path(os.path.expandvars(str(waarde))).expanduser()
+
+
+def eigen_model_mappen():
+    """De plekken waar de Gesprekstool vroeger zijn eigen kopie van de modellen zette."""
+    mappen = [gebruikers_map() / "models", systeem_map() / "models", app_map() / "models"]
     if MAC and BEVROREN:      # map 'models' naast Gesprekstool.app
         mappen.append(app_map().parent.parent.parent / "models")
     return mappen
 
 
-def zoek_model(soort):
-    """soort is 'whisper' of 'llm'. Geeft het pad of None."""
+def zoek_model_met_bron(soort):
+    """soort is 'whisper' of 'llm'. Geeft (pad, bron) of (None, None).
+
+    Volgorde: een vast pad uit de instellingen, de map uit GESPREKSTOOL_MODELLEN (voor tests en
+    ICT), de gedeelde map, en tot slot de eigen mappen van eerdere installaties.
+    """
     ingesteld = CFG.get(soort + "_model")
     if ingesteld:
         pad = Path(os.path.expandvars(str(ingesteld))).expanduser()
-        return pad if pad.is_file() else None
+        return (pad, "instelling %s_model" % soort) if pad.is_file() else (None, None)
     patroon = "ggml-*.bin" if soort == "whisper" else "*.gguf"
-    for map_ in model_mappen():
+    if os.environ.get("GESPREKSTOOL_MODELLEN"):
+        gevonden = sorted(Path(os.environ["GESPREKSTOOL_MODELLEN"]).glob(patroon))
+        if gevonden:
+            return gevonden[0], "GESPREKSTOOL_MODELLEN"
+    gedeeld = gedeelde_map()
+    if gedeeld:
+        namen = list(GEDEELDE_MODELLEN[soort])
+        if soort == "llm" and 0 < werkgeheugen_gb() < 15:
+            namen.reverse()   # weinig werkgeheugen: het kleine taalmodel eerst
+        for naam in namen:
+            pad = gedeeld / soort / naam
+            if pad.is_file():
+                return pad, BRON_GEDEELD
+    for map_ in eigen_model_mappen():
         if map_.is_dir():
             gevonden = sorted(map_.glob(patroon))
             if gevonden:
-                return gevonden[0]
-    return None
+                return gevonden[0], BRON_EIGEN
+    return None, None
+
+
+def zoek_model(soort):
+    """soort is 'whisper' of 'llm'. Geeft het pad of None."""
+    return zoek_model_met_bron(soort)[0]
 
 
 def zoek_binair(submap, naam):
@@ -178,11 +216,13 @@ def _vereis_binair(submap, naam):
     return pad
 
 
-def _vereis_model(soort):
-    pad = zoek_model(soort)
+def _vereis_model(soort, logmap=None):
+    pad, bron = zoek_model_met_bron(soort)
+    naam = "spraakmodel" if soort == "whisper" else "taalmodel"
     if not pad:
-        naam = "spraakmodel" if soort == "whisper" else "taalmodel"
         raise Fout("Het %s ontbreekt op deze computer. Neem contact op met ICT." % naam)
+    if logmap is not None:
+        log(logmap, "%s geladen uit: %s (%s)" % (naam.capitalize(), pad, bron))
     return pad
 
 
@@ -479,7 +519,7 @@ class Verwerking:
         if not wav.is_file() or wav.stat().st_size < 1000:
             raise Fout("Er is geen opname gevonden om te verwerken.")
         binair = _vereis_binair("whisper", "whisper-cli")
-        model = _vereis_model("whisper")
+        model = _vereis_model("whisper", self.map)
         totaal = wav_duur(wav)
         uit = self.map / "transcript_bezig.txt"
         self.status("Stap 1 van 2: gesprek uitschrijven...")
@@ -518,7 +558,7 @@ class Verwerking:
     # -- taalmodel
     def _start_llm(self):
         binair = _vereis_binair("llama", "llama-server")
-        model = _vereis_model("llm")
+        model = _vereis_model("llm", self.map)
         for gpu in ([True, False] if CFG["gpu"] else [False]):
             with socket.socket() as s:
                 s.bind(("127.0.0.1", 0))
@@ -698,9 +738,12 @@ def controle(sd=None, meld=None):
         pad = zoek_binair(submap, naam)
         regel(bool(pad), "%s (%s): %s" % (omschrijving, naam, pad or "ontbreekt"))
     for soort, omschrijving in (("whisper", "Spraakmodel"), ("llm", "Taalmodel")):
-        pad = zoek_model(soort)
-        regel(bool(pad), "%s: %s" % (omschrijving, pad.name if pad else
-                                     "ontbreekt (verwacht in %s)" % (systeem_map() / "models")))
+        pad, bron = zoek_model_met_bron(soort)
+        gedeeld = gedeelde_map()
+        verwacht = [str(gedeeld / soort)] if gedeeld else []
+        verwacht.append(str(systeem_map() / "models"))
+        regel(bool(pad), "%s: %s" % (omschrijving, "%s (%s)" % (pad, bron) if pad else
+                                     "ontbreekt (gezocht in %s)" % " en ".join(verwacht)))
     namen = list(templates())
     regel(bool(namen), "Templates: %s" % (", ".join(namen) or "geen gevonden"))
 

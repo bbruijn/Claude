@@ -43,6 +43,26 @@ en opname, transcript en verslag verlaten de laptop niet.
 
 ![Verslagscherm](docs/scherm-verslag.png)
 
+## Waar staan de AI-modellen?
+
+De Gesprekstool gebruikt twee modelbestanden: een spraakmodel en een taalmodel. Hij zoekt ze
+eerst in de gedeelde map `~/AI-modellen` (Windows: `%USERPROFILE%\AI-modellen`), die ook
+andere apps op de laptop kunnen gebruiken:
+
+```
+~/AI-modellen/whisper/ggml-large-v3-turbo.bin
+~/AI-modellen/llm/gemma-3-12b-it-Q4_K_M.gguf     (of gemma-3-4b-it-Q4_K_M.gguf)
+```
+
+Staat een model daar niet, dan gebruikt de tool de kopie van een eerdere installatie
+(`/Library/Application Support/Gesprekstool/models`, of op Windows
+`C:\ProgramData\Gesprekstool\models`). Andere modellen in de gedeelde map, van andere apps,
+laat hij staan.
+
+Welk bestand er gebruikt wordt, zie je bij **Controle**: achter het pad staat *gedeelde map*
+of *eigen map*. Het staat ook in `verwerking.log` in de map van elk gesprek. Een andere
+gedeelde map stel je in met `gedeelde_modellen_map` (zie [BEHEER.md](BEHEER.md), hoofdstuk 5).
+
 ## Voor ontwikkelaars
 
 ```bash

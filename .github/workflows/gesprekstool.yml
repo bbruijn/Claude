@@ -96,6 +96,19 @@ jobs:
           python -m pip install --quiet "pyinstaller>=6.6,<7" sounddevice
           python -m PyInstaller --noconfirm --distpath dist --workpath build/pyinstaller bouw/gesprekstool.spec
 
+      - name: PowerShell-scripts controleren (syntaxis)
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: |
+          $fout = $false
+          foreach ($script in Get-ChildItem beheer -Filter *.ps1) {
+            $fouten = $null
+            [void][System.Management.Automation.Language.Parser]::ParseFile($script.FullName, [ref]$null, [ref]$fouten)
+            if ($fouten) { $fout = $true; $fouten | ForEach-Object { Write-Host "$($script.Name): $_" } }
+            else { Write-Host "OK: $($script.Name)" }
+          }
+          if ($fout) { exit 1 }
+
       - name: Pakket samenstellen
         run: bouw/maak-pakket.sh ${{ matrix.naam }}
 
@@ -103,7 +116,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ runner.temp }}/rooktest/modellen
-          key: rooktest-modellen-v1
+          key: rooktest-modellen-v2
 
       - name: Rooktest met het echte pakket
         run: bouw/rooktest.sh ${{ matrix.naam }}

@@ -17,7 +17,11 @@ def _verwerk(map_, meta):
         print(stuk, end="", flush=True)
 
     pad = kern.Verwerking(map_, meta, status=status, tekst=tekst).uitvoeren()
-    print("\n\nKlaar: %s" % pad)
+    print("\n")
+    for regel in (Path(map_) / "verwerking.log").read_text("utf-8", errors="replace").splitlines():
+        if "geladen uit:" in regel:
+            print(regel)
+    print("\nKlaar: %s" % pad)
 
 
 def _venstertest():

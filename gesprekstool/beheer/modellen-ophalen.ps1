@@ -1,7 +1,11 @@
 <#
 .SYNOPSIS
   Haalt de AI-modellen op. Dit is de enige stap die internet nodig heeft.
-  Doe dit een keer op een beheercomputer en kopieer de map daarna naar de laptops.
+  Zonder -Doel komen de modellen in de gedeelde map %USERPROFILE%\AI-modellen (submappen
+  whisper en llm). Met -Doel komt alles in een losse map, bijvoorbeeld een USB-stick om daarna
+  op meerdere laptops te installeren. Een model dat er al staat, wordt niet opnieuw opgehaald.
+.EXAMPLE
+  powershell -ExecutionPolicy Bypass -File modellen-ophalen.ps1 -Llm 4b
 .EXAMPLE
   powershell -ExecutionPolicy Bypass -File modellen-ophalen.ps1 -Doel D:\modellen -Llm 4b
 .NOTES
@@ -9,17 +13,23 @@
   4b  = klein taalmodel (ca. 2,5 GB), aanbevolen voor Windows-laptops zonder losse videokaart.
 #>
 param(
-  [string]$Doel = ".\modellen",
+  [string]$Doel = "",
+  [string]$GedeeldeMap = (Join-Path $env:USERPROFILE "AI-modellen"),
   [ValidateSet("12b", "4b")][string]$Llm = "4b"
 )
 $ErrorActionPreference = "Stop"
-New-Item -ItemType Directory -Force $Doel | Out-Null
+$behandeld = @()
 
 $regels = Get-Content (Join-Path $PSScriptRoot "modellen.tsv") | Where-Object { $_ -and $_ -notmatch '^#' }
 foreach ($regel in $regels) {
   $sleutel, $bestand, $url = $regel -split "`t"
   if ($sleutel -ne "whisper" -and $sleutel -ne "llm-$Llm") { continue }
-  $pad = Join-Path $Doel $bestand
+  if ($Doel) { $map = $Doel }
+  elseif ($sleutel -eq "whisper") { $map = Join-Path $GedeeldeMap "whisper" }
+  else { $map = Join-Path $GedeeldeMap "llm" }
+  New-Item -ItemType Directory -Force $map | Out-Null
+  $pad = Join-Path $map $bestand
+  $behandeld += $pad
   if ((Test-Path $pad) -and (Get-Item $pad).Length -gt 0) {
     Write-Host "Staat er al: $bestand"
     continue
@@ -35,13 +45,13 @@ foreach ($regel in $regels) {
   Move-Item -Force "$pad.deel" $pad
 }
 
-foreach ($gguf in Get-ChildItem $Doel -Filter *.gguf) {
-  $stroom = [System.IO.File]::OpenRead($gguf.FullName)
+foreach ($pad in $behandeld | Where-Object { $_ -like "*.gguf" }) {
+  $stroom = [System.IO.File]::OpenRead($pad)
   $kop = New-Object byte[] 4
   [void]$stroom.Read($kop, 0, 4)
   $stroom.Close()
-  if ([System.Text.Encoding]::ASCII.GetString($kop) -ne "GGUF") { throw "Ongeldig modelbestand: $($gguf.Name)" }
+  if ([System.Text.Encoding]::ASCII.GetString($kop) -ne "GGUF") { throw "Ongeldig modelbestand: $pad" }
 }
 Write-Host ""
-Write-Host "Klaar. Modellen staan in: $Doel"
-Get-ChildItem $Doel | Format-Table Name, @{ n = "GB"; e = { [math]::Round($_.Length / 1GB, 1) } }
+Write-Host "Klaar. Modellen:"
+$behandeld | ForEach-Object { Get-Item $_ } | Format-Table FullName, @{ n = "GB"; e = { [math]::Round($_.Length / 1GB, 1) } }

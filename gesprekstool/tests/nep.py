@@ -98,7 +98,9 @@ def maak_omgeving(tmp):
 
 
 def schrijf_config(env, **instellingen):
-    cfg = {"data_map": str(Path(env["GESPREKSTOOL_HOME"]) / "gesprekken")}
+    thuis = Path(env["GESPREKSTOOL_HOME"])
+    # Een eigen gedeelde map per test, zodat een echte ~/AI-modellen de tests niet beinvloedt.
+    cfg = {"data_map": str(thuis / "gesprekken"), "gedeelde_modellen_map": str(thuis.parent / "gedeeld")}
     cfg.update(instellingen)
     (Path(env["GESPREKSTOOL_HOME"]) / "config.json").write_text(json.dumps(cfg), "utf-8")
 

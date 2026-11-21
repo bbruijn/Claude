@@ -45,8 +45,10 @@ haal() {  # haal <doel> <url> [<terugval-url> ...]
 }
 
 kop "Testmodellen en testopname ophalen"
-haal "$MODELLEN/ggml-tiny.bin" "$HF/ggerganov/whisper.cpp/resolve/main/ggml-tiny.bin"
-haal "$MODELLEN/test-klein.gguf" \
+# Kleine testmodellen, opgeslagen onder de standaardnamen uit beheer/modellen.tsv. De app leest
+# uit de gedeelde map alleen die namen; zo wordt ook dat pad met het echte pakket getest.
+haal "$MODELLEN/ggml-large-v3-turbo.bin" "$HF/ggerganov/whisper.cpp/resolve/main/ggml-tiny.bin"
+haal "$MODELLEN/gemma-3-4b-it-Q4_K_M.gguf" \
   "$HF/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/qwen2.5-0.5b-instruct-q4_k_m.gguf" \
   "$HF/ggml-org/gemma-3-1b-it-GGUF/resolve/main/gemma-3-1b-it-Q4_K_M.gguf" \
   "$HF/bartowski/SmolLM2-360M-Instruct-GGUF/resolve/main/SmolLM2-360M-Instruct-Q4_K_M.gguf"
@@ -105,23 +107,70 @@ kop "Venster openen en sluiten"
 "$CLI" --venstertest
 
 kop "Installatie door ICT"
-unset GESPREKSTOOL_MODELLEN       # vanaf nu moeten de modellen op de systeemplek gevonden worden
+unset GESPREKSTOOL_MODELLEN       # vanaf nu zoekt de app op de gewone plekken
 EERSTE="$(ls -d "$DATA"/*rooktest | head -1)"
+installeer() {
+  if [[ -n "$WINDOWS" ]]; then
+    powershell -NoProfile -ExecutionPolicy Bypass -File "$PAKKET/beheer/windows-installeren.ps1" \
+      -Modellen "$MODELLEN" | tee "$TMP/installatie.txt"
+  else
+    sudo "$PAKKET/beheer/mac-installeren.sh" "$MODELLEN" | tee "$TMP/installatie.txt"
+  fi
+}
 if [[ -n "$WINDOWS" ]]; then
-  powershell -NoProfile -ExecutionPolicy Bypass -File "$PAKKET/beheer/windows-installeren.ps1" \
-    -Modellen "$MODELLEN"
   GEINSTALLEERD="$(pad "$PROGRAMFILES")/Gesprekstool/gesprekstool-cli.exe"
-  controleer "$GEINSTALLEERD"
-  grep -q '^\[OK.*firewallregel' "$TMP/controle.txt" || { echo "Firewallregel ontbreekt." >&2; exit 1; }
+  GEDEELD="$(pad "$USERPROFILE")/AI-modellen"
+  OUD="$(pad "$PROGRAMDATA")/Gesprekstool/models"
 else
-  sudo "$PAKKET/beheer/mac-installeren.sh" "$MODELLEN"
   GEINSTALLEERD="/Applications/Gesprekstool.app/Contents/MacOS/Gesprekstool"
-  controleer "$GEINSTALLEERD"
+  GEDEELD="$HOME/AI-modellen"
+  OUD="/Library/Application Support/Gesprekstool/models"
 fi
+installeer
+controleer "$GEINSTALLEERD"
+if [[ -n "$WINDOWS" ]]; then
+  grep -q '^\[OK.*firewallregel' "$TMP/controle.txt" || { echo "Firewallregel ontbreekt." >&2; exit 1; }
+fi
+
+kop "Modellen staan in de gedeelde map en worden daaruit gelezen"
+ls -l "$GEDEELD/whisper" "$GEDEELD/llm"
+[[ -f "$GEDEELD/whisper/ggml-large-v3-turbo.bin" && -f "$GEDEELD/llm/gemma-3-4b-it-Q4_K_M.gguf" ]] \
+  || { echo "De installatie zette de modellen niet in de gedeelde map." >&2; exit 1; }
+if ls "$OUD"/*.gguf "$OUD"/ggml-*.bin >/dev/null 2>&1; then
+  echo "De installatie kopieerde modellen naar de oude plek $OUD." >&2; exit 1
+fi
+for soort in Spraakmodel Taalmodel; do
+  grep -q "^\[OK.*$soort: .*AI-modellen.*(gedeelde map)" "$TMP/controle.txt" \
+    || { echo "$soort wordt niet uit de gedeelde map gelezen." >&2; exit 1; }
+done
+
+kop "Opnieuw installeren kopieert niets dubbel"
+installeer
+[[ "$(grep -c 'staat al in de gedeelde map, niet gekopieerd' "$TMP/installatie.txt")" == "2" ]] \
+  || { echo "Bij opnieuw installeren werden modellen opnieuw gekopieerd." >&2; exit 1; }
 
 kop "Verslag maken met de geinstalleerde versie (met netwerkblokkade actief)"
 rm -f "$EERSTE/verslag.txt"
-"$GEINSTALLEERD" --samenvat "$EERSTE"
+"$GEINSTALLEERD" --samenvat "$EERSTE" | tee "$TMP/samenvat.txt"
 [[ -s "$EERSTE/verslag.txt" ]] || { echo "Geen verslag na installatie." >&2; exit 1; }
+grep -q "Taalmodel geladen uit: .*AI-modellen.*(gedeelde map)" "$TMP/samenvat.txt" \
+  || { echo "Het verslag is niet met het model uit de gedeelde map gemaakt." >&2; exit 1; }
+
+kop "Terugvallen op een bestaande installatie (modellen alleen op de oude plek)"
+if [[ -n "$WINDOWS" ]]; then
+  mkdir -p "$OUD" && cp "$MODELLEN"/* "$OUD/"
+else
+  sudo mkdir -p "$OUD" && sudo cp "$MODELLEN"/* "$OUD/" && sudo chmod -R a+rX "$OUD"
+fi
+mv "$GEDEELD" "$GEDEELD.verborgen"
+controleer "$GEINSTALLEERD"
+for soort in Spraakmodel Taalmodel; do
+  grep -q "^\[OK.*$soort: .*(eigen map)" "$TMP/controle.txt" \
+    || { echo "$soort: geen terugval op de oude plek." >&2; exit 1; }
+done
+rm -f "$EERSTE/verslag.txt"
+"$GEINSTALLEERD" --samenvat "$EERSTE"
+[[ -s "$EERSTE/verslag.txt" ]] || { echo "Geen verslag met de modellen op de oude plek." >&2; exit 1; }
+mv "$GEDEELD.verborgen" "$GEDEELD"
 
 kop "Rooktest geslaagd"
